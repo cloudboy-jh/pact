@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="cropped-pact-logo-black.png" alt="Pact Logo" width="200" />
+  <img src="Pact-readme-logo.png" alt="Pact Logo" width="400" />
 </p>
 
 # Pact
