@@ -1,0 +1,14 @@
+# Cloudflare Pages configuration
+# See: https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+
+name = "pact"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# Environment variables (secrets should be set via Cloudflare dashboard)
+# [vars]
+# GITHUB_CLIENT_ID = "your-client-id"
+
+# Note: GITHUB_CLIENT_SECRET should be set as a secret in Cloudflare dashboard
+# Do NOT put secrets in this file
