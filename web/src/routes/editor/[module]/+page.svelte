@@ -49,14 +49,14 @@
 	async function loadFiles(path = '') {
 		loading = true;
 		error = '';
-		currentPath = path;
+		// Always use moduleId as the base path
+		currentPath = path || moduleId;
 
 		try {
 			const github = new GitHubClient($auth.token!);
-			const modulePath = path || moduleId;
 			
 			try {
-				files = await github.getContents($auth.user!.login, modulePath);
+				files = await github.getContents($auth.user!.login, currentPath);
 			} catch {
 				// Module directory doesn't exist yet
 				files = [];
@@ -144,7 +144,7 @@
 
 		try {
 			const github = new GitHubClient($auth.token!);
-			const path = currentPath ? `${currentPath}/${filename}` : `${moduleId}/${filename}`;
+			const path = `${currentPath}/${filename}`;
 			
 			await github.updateFile(
 				$auth.user!.login,
@@ -199,13 +199,12 @@
 	}
 
 	function goBack() {
-		if (currentPath && currentPath !== moduleId) {
+		if (currentPath !== moduleId) {
 			const parentPath = currentPath.split('/').slice(0, -1).join('/');
 			loadFiles(parentPath || moduleId);
-		} else if (currentPath) {
-			loadFiles('');
 			selectedFile = null;
 			fileContent = '';
+			originalContent = '';
 		}
 	}
 
@@ -261,7 +260,7 @@
 						/>
 					</div>
 					<p class="text-xs text-zinc-500">
-						File will be created in: <code class="text-zinc-400">{currentPath || moduleId}/</code>
+						File will be created in: <code class="text-zinc-400">{currentPath}/</code>
 					</p>
 				</div>
 				
@@ -303,7 +302,7 @@
 					</div>
 					<div>
 						<h1 class="font-bold capitalize">{moduleId}</h1>
-						<p class="text-xs text-zinc-500">{currentPath || moduleId}</p>
+						<p class="text-xs text-zinc-500">{currentPath}</p>
 					</div>
 				</div>
 			</div>
@@ -350,7 +349,7 @@
 			<!-- File list sidebar -->
 			<div class="w-64 border-r border-zinc-800 flex flex-col">
 				<div class="p-2 border-b border-zinc-800 flex items-center justify-between">
-					{#if currentPath && currentPath !== moduleId}
+					{#if currentPath !== moduleId}
 						<button
 							on:click={goBack}
 							class="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
