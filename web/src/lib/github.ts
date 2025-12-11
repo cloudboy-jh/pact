@@ -1,6 +1,6 @@
 // GitHub OAuth configuration
 // Replace with your OAuth App credentials
-export const GITHUB_CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID';
+export const GITHUB_CLIENT_ID = 'Ov23liB8Z30c0BkX2nXF';
 
 const GITHUB_API = 'https://api.github.com';
 
