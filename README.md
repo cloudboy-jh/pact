@@ -21,7 +21,7 @@ One `pact.json` manifest + organized files in a GitHub repo. CLI to edit and syn
 ### What's in a Pact
 
 ```
-username/pact/
+username/my-pact/
 ├── pact.json              # Manifest
 ├── shell/                 # .zshrc, .bashrc, profile.ps1
 ├── editor/                # nvim, vscode, cursor configs
@@ -314,7 +314,7 @@ pact/
 | CLI Secrets | go-keyring |
 | Web | SvelteKit, Tailwind CSS |
 | Auth | GitHub OAuth |
-| Storage | GitHub repo (user/pact) |
+| Storage | GitHub repo (user/my-pact) |
 
 ---
 

@@ -1,8 +1,19 @@
 // GitHub OAuth configuration
-// Replace with your OAuth App credentials
-export const GITHUB_CLIENT_ID = 'Ov23liB8Z30c0BkX2nXF';
+// Uses environment variable if available, otherwise falls back to default
+export const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23liB8Z30c0BkX2nXF';
 
 const GITHUB_API = 'https://api.github.com';
+
+// Helper functions for base64 encoding/decoding that handle Unicode
+function encodeBase64(str: string): string {
+	return btoa(unescape(encodeURIComponent(str)));
+}
+
+function decodeBase64(str: string): string {
+	// GitHub API returns base64 with newlines, remove them first
+	const cleaned = str.replace(/\n/g, '');
+	return decodeURIComponent(escape(atob(cleaned)));
+}
 
 export interface GitHubFile {
 	name: string;
@@ -64,22 +75,22 @@ export class GitHubClient {
 		return response.json();
 	}
 
-	// Check if the user's pact repo exists
+	// Check if the user's my-pact repo exists
 	async repoExists(username: string): Promise<boolean> {
 		try {
-			await this.request(`/repos/${username}/pact`);
+			await this.request(`/repos/${username}/my-pact`);
 			return true;
 		} catch {
 			return false;
 		}
 	}
 
-	// Create the pact repo
+	// Create the my-pact repo
 	async createRepo(): Promise<GitHubRepo> {
 		return this.request<GitHubRepo>('/user/repos', {
 			method: 'POST',
 			body: JSON.stringify({
-				name: 'pact',
+				name: 'my-pact',
 				description: 'My development environment configuration - managed by pact',
 				private: false,
 				auto_init: true
@@ -89,33 +100,33 @@ export class GitHubClient {
 
 	// Get repo contents
 	async getContents(username: string, path = ''): Promise<GitHubFile[]> {
-		const endpoint = `/repos/${username}/pact/contents/${path}`;
+		const endpoint = `/repos/${username}/my-pact/contents/${path}`;
 		const result = await this.request<GitHubFile | GitHubFile[]>(endpoint);
 		return Array.isArray(result) ? result : [result];
 	}
 
 	// Get file content
 	async getFileContent(username: string, path: string): Promise<string> {
-		const file = await this.request<GitHubFile>(`/repos/${username}/pact/contents/${path}`);
+		const file = await this.request<GitHubFile>(`/repos/${username}/my-pact/contents/${path}`);
 		if (file.content) {
-			return atob(file.content);
+			return decodeBase64(file.content);
 		}
 		throw new Error('File has no content');
 	}
 
-	// Create or update a file
+	// Create or update a file - returns the new file info with updated SHA
 	async updateFile(
 		username: string,
 		path: string,
 		content: string,
 		message: string,
 		sha?: string
-	): Promise<void> {
-		await this.request(`/repos/${username}/pact/contents/${path}`, {
+	): Promise<{ content: GitHubFile }> {
+		return this.request(`/repos/${username}/my-pact/contents/${path}`, {
 			method: 'PUT',
 			body: JSON.stringify({
 				message,
-				content: btoa(content),
+				content: encodeBase64(content),
 				sha
 			})
 		});
@@ -123,7 +134,7 @@ export class GitHubClient {
 
 	// Delete a file
 	async deleteFile(username: string, path: string, sha: string, message: string): Promise<void> {
-		await this.request(`/repos/${username}/pact/contents/${path}`, {
+		await this.request(`/repos/${username}/my-pact/contents/${path}`, {
 			method: 'DELETE',
 			body: JSON.stringify({
 				message,
@@ -151,7 +162,7 @@ export class GitHubClient {
 	// Get the SHA of a file (needed for updates)
 	async getFileSha(username: string, path: string): Promise<string | null> {
 		try {
-			const file = await this.request<GitHubFile>(`/repos/${username}/pact/contents/${path}`);
+			const file = await this.request<GitHubFile>(`/repos/${username}/my-pact/contents/${path}`);
 			return file.sha;
 		} catch {
 			return null;

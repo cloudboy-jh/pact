@@ -7,13 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
 const (
-	// GitHub OAuth App Client ID - this needs to be set
-	// For development, use: Ov23liXXXXXXXXXXXXXX
-	ClientID = "GITHUB_CLIENT_ID" // Replace with actual Client ID
+	// Default GitHub OAuth App Client ID
+	// Can be overridden via GITHUB_CLIENT_ID environment variable
+	defaultClientID = "Ov23liB8Z30c0BkX2nXF"
 
 	deviceCodeURL = "https://github.com/login/device/code"
 	tokenURL      = "https://github.com/login/oauth/access_token"
@@ -21,6 +22,14 @@ const (
 	// Scopes needed for pact
 	scopes = "repo"
 )
+
+// GetClientID returns the GitHub OAuth client ID from env or default
+func GetClientID() string {
+	if id := os.Getenv("GITHUB_CLIENT_ID"); id != "" {
+		return id
+	}
+	return defaultClientID
+}
 
 // DeviceCodeResponse represents GitHub's device code response
 type DeviceCodeResponse struct {
@@ -42,7 +51,7 @@ type TokenResponse struct {
 // RequestDeviceCode initiates the device flow
 func RequestDeviceCode() (*DeviceCodeResponse, error) {
 	data := url.Values{}
-	data.Set("client_id", ClientID)
+	data.Set("client_id", GetClientID())
 	data.Set("scope", scopes)
 
 	req, err := http.NewRequest("POST", deviceCodeURL, bytes.NewBufferString(data.Encode()))
@@ -75,7 +84,7 @@ func RequestDeviceCode() (*DeviceCodeResponse, error) {
 // PollForToken polls GitHub for the access token
 func PollForToken(deviceCode string, interval int) (string, error) {
 	data := url.Values{}
-	data.Set("client_id", ClientID)
+	data.Set("client_id", GetClientID())
 	data.Set("device_code", deviceCode)
 	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
@@ -170,9 +179,9 @@ type GitHubUser struct {
 	Name      string `json:"name"`
 }
 
-// RepoExists checks if the user's pact repo exists
+// RepoExists checks if the user's my-pact repo exists
 func RepoExists(token, username string) (bool, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/pact", username)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/my-pact", username)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false, err
@@ -190,10 +199,10 @@ func RepoExists(token, username string) (bool, error) {
 	return resp.StatusCode == 200, nil
 }
 
-// CreateRepo creates the user's pact repo
+// CreateRepo creates the user's my-pact repo
 func CreateRepo(token string) error {
 	payload := map[string]interface{}{
-		"name":        "pact",
+		"name":        "my-pact",
 		"description": "My development environment configuration - managed by pact",
 		"private":     false,
 		"auto_init":   true,

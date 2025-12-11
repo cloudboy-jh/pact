@@ -15,4 +15,14 @@ declare global {
 	}
 }
 
+// Environment variables loaded via Vite
+interface ImportMetaEnv {
+	readonly VITE_GITHUB_CLIENT_ID: string;
+	readonly GITHUB_CLIENT_SECRET: string;
+}
+
+interface ImportMeta {
+	readonly env: ImportMetaEnv;
+}
+
 export {};

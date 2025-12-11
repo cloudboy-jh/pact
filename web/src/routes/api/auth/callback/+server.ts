@@ -9,11 +9,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		throw error(400, 'Missing authorization code');
 	}
 
-	// Get client secret from Cloudflare environment
-	// Try multiple ways to access it
+	// Get client secret from Cloudflare environment (production) or process.env (local dev)
 	const GITHUB_CLIENT_SECRET = 
 		platform?.env?.GITHUB_CLIENT_SECRET || 
-		(globalThis as any).GITHUB_CLIENT_SECRET ||
+		process.env.GITHUB_CLIENT_SECRET ||
 		'';
 
 	if (!GITHUB_CLIENT_SECRET) {

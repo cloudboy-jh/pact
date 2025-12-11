@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { dev } from '$app/environment';
 	import { auth, isAuthenticated } from '$lib/stores/auth';
 	import { GitHubClient, type PactConfig } from '$lib/github';
 	import {
@@ -53,18 +52,6 @@
 	onMount(async () => {
 		if (initialized) return; // Prevent reinit
 		initialized = true;
-
-		// In dev mode, skip auth check entirely
-		if (dev) {
-			loading = false;
-			// Use mock data in dev mode
-			pactConfig = {
-				version: '1.0.0',
-				modules: {},
-				secrets: []
-			};
-			return;
-		}
 
 		await auth.initialize();
 		
@@ -175,7 +162,7 @@
 				<div>
 					<h1 class="text-xl font-bold tracking-tight">pact</h1>
 					{#if $auth.user}
-						<p class="text-xs text-zinc-500">{$auth.user.login}/pact</p>
+						<p class="text-xs text-zinc-500">{$auth.user.login}/my-pact</p>
 					{/if}
 				</div>
 			</div>

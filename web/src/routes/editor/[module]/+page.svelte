@@ -11,7 +11,8 @@
 		Plus,
 		Save,
 		Trash2,
-		FolderGit2
+		FolderGit2,
+		X
 	} from 'lucide-svelte';
 
 	let moduleId = '';
@@ -23,6 +24,11 @@
 	let saving = false;
 	let error = '';
 	let currentPath = '';
+
+	// New file dialog state
+	let showNewFileDialog = false;
+	let newFileName = '';
+	let newFileNameInput: HTMLInputElement;
 
 	// OS tabs for modules that support OS-specific configs
 	const osModules = ['shell', 'editor', 'terminal'];
@@ -91,7 +97,7 @@
 
 		try {
 			const github = new GitHubClient($auth.token!);
-			await github.updateFile(
+			const result = await github.updateFile(
 				$auth.user!.login,
 				selectedFile.path,
 				fileContent,
@@ -101,14 +107,14 @@
 			
 			originalContent = fileContent;
 			
-			// Refresh file list to get new SHA
-			await loadFiles(currentPath);
+			// Update selectedFile with new SHA from response
+			selectedFile = {
+				...selectedFile,
+				sha: result.content.sha
+			};
 			
-			// Re-select the file
-			const updatedFile = files.find(f => f.path === selectedFile!.path);
-			if (updatedFile) {
-				selectedFile = updatedFile;
-			}
+			// Refresh file list
+			await loadFiles(currentPath);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save file';
 		} finally {
@@ -116,10 +122,23 @@
 		}
 	}
 
+	function openNewFileDialog() {
+		newFileName = '';
+		showNewFileDialog = true;
+		// Focus the input after the dialog renders
+		setTimeout(() => newFileNameInput?.focus(), 0);
+	}
+
+	function closeNewFileDialog() {
+		showNewFileDialog = false;
+		newFileName = '';
+	}
+
 	async function createFile() {
-		const filename = prompt('Enter filename:');
+		const filename = newFileName.trim();
 		if (!filename) return;
 
+		closeNewFileDialog();
 		saving = true;
 		error = '';
 
@@ -139,6 +158,14 @@
 			error = e instanceof Error ? e.message : 'Failed to create file';
 		} finally {
 			saving = false;
+		}
+	}
+
+	function handleNewFileKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && newFileName.trim()) {
+			createFile();
+		} else if (event.key === 'Escape') {
+			closeNewFileDialog();
 		}
 	}
 
@@ -195,6 +222,68 @@
 	<div
 		class="fixed inset-0 bg-[linear-gradient(rgba(39,39,42,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(39,39,42,0.3)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"
 	></div>
+
+	<!-- New File Dialog -->
+	{#if showNewFileDialog}
+		<div class="fixed inset-0 z-50 flex items-center justify-center">
+			<!-- Backdrop -->
+			<button
+				class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+				on:click={closeNewFileDialog}
+				aria-label="Close dialog"
+			></button>
+			
+			<!-- Dialog -->
+			<div class="relative bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+				<!-- Header -->
+				<div class="flex items-center justify-between p-4 border-b border-zinc-800">
+					<h2 class="text-lg font-semibold">Create New File</h2>
+					<button
+						on:click={closeNewFileDialog}
+						class="p-1 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200"
+					>
+						<X size={18} />
+					</button>
+				</div>
+				
+				<!-- Content -->
+				<div class="p-4 space-y-4">
+					<div>
+						<label for="filename" class="block text-sm text-zinc-400 mb-2">Filename</label>
+						<input
+							bind:this={newFileNameInput}
+							bind:value={newFileName}
+							on:keydown={handleNewFileKeydown}
+							type="text"
+							id="filename"
+							placeholder="example.txt"
+							class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder-zinc-500"
+						/>
+					</div>
+					<p class="text-xs text-zinc-500">
+						File will be created in: <code class="text-zinc-400">{currentPath || moduleId}/</code>
+					</p>
+				</div>
+				
+				<!-- Footer -->
+				<div class="flex justify-end gap-2 p-4 border-t border-zinc-800 bg-zinc-900/50">
+					<button
+						on:click={closeNewFileDialog}
+						class="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+					>
+						Cancel
+					</button>
+					<button
+						on:click={createFile}
+						disabled={!newFileName.trim()}
+						class="px-4 py-2 text-sm bg-emerald-500 text-zinc-950 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Create File
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<div class="relative z-10 h-screen flex flex-col">
 		<!-- Header -->
@@ -273,7 +362,7 @@
 						<span class="text-sm text-zinc-500">Files</span>
 					{/if}
 					<button
-						on:click={createFile}
+						on:click={openNewFileDialog}
 						class="p-1 hover:bg-zinc-800 rounded transition-colors"
 						title="New file"
 					>

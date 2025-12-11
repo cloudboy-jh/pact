@@ -12,7 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-// Clone clones the user's pact repo to ~/.pact/
+// Clone clones the user's my-pact repo to ~/.pact/
 func Clone(token, username string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -28,7 +28,7 @@ func Clone(token, username string) error {
 		}
 	}
 
-	repoURL := fmt.Sprintf("https://github.com/%s/pact.git", username)
+	repoURL := fmt.Sprintf("https://github.com/%s/my-pact.git", username)
 
 	_, err = git.PlainClone(pactDir, false, &git.CloneOptions{
 		URL: repoURL,

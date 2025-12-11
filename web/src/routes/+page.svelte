@@ -3,17 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { auth, isAuthenticated } from '$lib/stores/auth';
 	import { getAuthUrl } from '$lib/github';
-	import { dev } from '$app/environment';
 	import { FolderGit2, Github, Terminal, Cpu, Palette, Key } from 'lucide-svelte';
 
-	// In dev mode, redirect immediately to dashboard
-	// Comment out the landing page for dev - just go straight to dashboard
 	onMount(async () => {
-		if (dev) {
-			goto('/dashboard');
-			return;
-		}
-		
 		await auth.initialize();
 		if ($isAuthenticated) {
 			goto('/dashboard');
@@ -105,7 +97,7 @@
 						</div>
 						<h3 class="font-medium">Connect GitHub</h3>
 						<p class="text-sm text-zinc-500">
-							We create a <code class="text-zinc-400">username/pact</code> repo to store your configs
+							We create a <code class="text-zinc-400">username/my-pact</code> repo to store your configs
 						</p>
 					</div>
 					<div class="text-center space-y-4">
