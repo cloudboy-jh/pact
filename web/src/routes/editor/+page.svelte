@@ -31,6 +31,8 @@
 	];
 
 	let showLlmDropdown = false;
+	let toastMessage = '';
+	let showToast = false;
 
 	// State
 	let loading = true;
@@ -424,6 +426,11 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 		
 		// Copy prompt to clipboard
 		navigator.clipboard.writeText(prompt).then(() => {
+			// Show toast
+			toastMessage = `Copied to clipboard! Paste in ${provider.name}`;
+			showToast = true;
+			setTimeout(() => { showToast = false; }, 3000);
+			
 			// Open the LLM in a new tab
 			window.open(provider.url, '_blank');
 		}).catch(() => {
@@ -450,6 +457,16 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 	<div
 		class="fixed inset-0 bg-[linear-gradient(rgba(39,39,42,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(39,39,42,0.3)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"
 	></div>
+
+	<!-- Toast Notification -->
+	{#if showToast}
+		<div class="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+			<div class="flex items-center gap-2 px-4 py-3 bg-emerald-500/90 text-zinc-950 rounded-lg shadow-lg font-medium text-sm">
+				<Check size={16} />
+				{toastMessage}
+			</div>
+		</div>
+	{/if}
 
 	<!-- New File Dialog -->
 	{#if showNewFileDialog}
