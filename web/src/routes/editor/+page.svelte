@@ -5,7 +5,7 @@
 	import { auth, isAuthenticated } from '$lib/stores/auth';
 	import { GitHubClient, type GitHubFile } from '$lib/github';
 	import CodeEditor from '$lib/components/CodeEditor.svelte';
-	import {
+import {
 		ArrowLeft,
 		File,
 		Folder,
@@ -19,7 +19,8 @@
 		X,
 		FileJson,
 		ExternalLink,
-		Sparkles
+		Sparkles,
+		Github
 	} from 'lucide-svelte';
 
 	// LLM providers for "Open in" dropdown
@@ -559,6 +560,17 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 						<span>Save failed</span>
 					</div>
 				{/if}
+
+				<!-- Push to GitHub Button -->
+				<button
+					on:click={saveFile}
+					disabled={saving || saveStatus === 'saving'}
+					class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm hover:bg-zinc-700 hover:border-zinc-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+					title="Push to GitHub"
+				>
+					<Github size={14} />
+					<span>Push</span>
+				</button>
 
 				<!-- Open in LLM Dropdown -->
 				{#if currentFile === 'pact.json'}
