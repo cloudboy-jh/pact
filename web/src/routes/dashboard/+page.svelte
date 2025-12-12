@@ -4,53 +4,71 @@
 	import { auth, isAuthenticated } from '$lib/stores/auth';
 	import { GitHubClient, type PactConfig } from '$lib/github';
 	import {
-		Settings,
 		Terminal,
 		Key,
 		Check,
 		AlertCircle,
 		ChevronRight,
+		ChevronDown,
 		Cpu,
 		Palette,
 		MessageSquare,
-		FolderGit2,
 		RefreshCw,
 		LogOut,
-		Github
+		Github,
+		Sparkles,
+		Bot,
+		Server,
+		Paintbrush,
+		Type,
+		Image,
+		Droplet,
+		Shapes,
+		FileCode,
+		FolderDot,
+		ScrollText
 	} from 'lucide-svelte';
 
 	let pactConfig: PactConfig | null = null;
 	let loading = true;
 	let error = '';
 
-	const moduleIcons: Record<string, typeof Terminal> = {
-		shell: Terminal,
-		editor: Cpu,
-		terminal: Terminal,
-		git: Github,
-		ai: MessageSquare,
-		tools: Cpu,
-		keybindings: Cpu,
-		snippets: Cpu,
-		fonts: Palette
-	};
+	// Dropdown state
+	let aiExpanded = false;
+	let ricingExpanded = false;
 
-	const moduleDescriptions: Record<string, string> = {
-		shell: 'Shell configuration',
-		editor: 'Editor settings',
-		terminal: 'Terminal emulator',
-		git: 'Git configuration',
-		ai: 'AI providers & prompts',
-		tools: 'CLI tool configs',
-		keybindings: 'Keyboard shortcuts',
-		snippets: 'Code snippets',
-		fonts: 'Font preferences'
-	};
+	// Top-level modules
+	const topLevelModules = [
+		{ id: 'shell', icon: Terminal, description: 'Shell configuration' },
+		{ id: 'editor', icon: Cpu, description: 'Editor settings, keybindings, snippets' },
+		{ id: 'terminal', icon: Terminal, description: 'Terminal emulator' },
+		{ id: 'git', icon: Github, description: 'Git configuration' },
+		{ id: 'cli-tools', icon: FileCode, description: 'CLI tool configs' },
+		{ id: 'scripts', icon: ScrollText, description: 'Personal utility scripts' },
+		{ id: 'dotfiles', icon: FolderDot, description: 'Misc dotfiles' }
+	];
+
+	// AI dropdown sub-items
+	const aiSubItems = [
+		{ id: 'ai.prompts', label: 'Prompts', icon: MessageSquare, description: 'AI prompts' },
+		{ id: 'ai.agents', label: 'Agents', icon: Bot, description: 'CLAUDE.md, .cursorrules' },
+		{ id: 'ai.providers', label: 'Providers', icon: Key, description: 'API provider configs' },
+		{ id: 'ai.mcp', label: 'MCP', icon: Server, description: 'Model Context Protocol' }
+	];
+
+	// Ricing dropdown sub-items
+	const ricingSubItems = [
+		{ id: 'ricing.themes', label: 'Themes', icon: Paintbrush, description: 'Terminal, editor themes' },
+		{ id: 'ricing.fonts', label: 'Fonts', icon: Type, description: 'Font preferences' },
+		{ id: 'ricing.wallpapers', label: 'Wallpapers/PFPs', icon: Image, description: 'Backgrounds, profile pics' },
+		{ id: 'ricing.colors', label: 'Colors', icon: Droplet, description: 'Color palettes' },
+		{ id: 'ricing.icons', label: 'Icons', icon: Shapes, description: 'Icon packs' }
+	];
 
 	let initialized = false;
 
 	onMount(async () => {
-		if (initialized) return; // Prevent reinit
+		if (initialized) return;
 		initialized = true;
 
 		await auth.initialize();
@@ -77,18 +95,25 @@
 		}
 	}
 
-	function getModuleStatus(moduleName: string): string {
+	function getModuleStatus(modulePath: string): string {
 		if (!pactConfig) return 'not_configured';
-		const module = (pactConfig.modules as Record<string, unknown>)[moduleName];
-		if (!module || (typeof module === 'object' && Object.keys(module as object).length === 0)) {
+		
+		// Handle nested paths like "ai.prompts"
+		const parts = modulePath.split('.');
+		let current: unknown = pactConfig.modules;
+		
+		for (const part of parts) {
+			if (current && typeof current === 'object' && part in current) {
+				current = (current as Record<string, unknown>)[part];
+			} else {
+				return 'not_configured';
+			}
+		}
+		
+		if (!current || (typeof current === 'object' && Object.keys(current as object).length === 0)) {
 			return 'not_configured';
 		}
 		return 'synced';
-	}
-
-	function getModuleFileCount(moduleName: string): number {
-		// This would ideally come from the GitHub API
-		return 0;
 	}
 
 	function getStatusColor(status: string): string {
@@ -96,8 +121,6 @@
 			case 'synced':
 				return 'text-emerald-400';
 			case 'pending':
-				return 'text-amber-400';
-			case 'missing':
 				return 'text-amber-400';
 			case 'not_configured':
 				return 'text-zinc-500';
@@ -112,8 +135,6 @@
 				return Check;
 			case 'pending':
 				return AlertCircle;
-			case 'missing':
-				return AlertCircle;
 			default:
 				return null;
 		}
@@ -125,8 +146,6 @@
 				return 'synced';
 			case 'pending':
 				return 'pending';
-			case 'missing':
-				return 'missing';
 			case 'not_configured':
 				return 'not configured';
 			default:
@@ -139,11 +158,17 @@
 		goto('/');
 	}
 
-	function navigateToEditor(moduleId: string) {
-		goto(`/editor?section=${moduleId}`);
+	function navigateToEditor(sectionId: string) {
+		goto(`/editor?section=${sectionId}`);
 	}
 
-	const modules = ['shell', 'editor', 'terminal', 'git', 'ai', 'tools', 'keybindings', 'snippets', 'fonts'];
+	function toggleAi() {
+		aiExpanded = !aiExpanded;
+	}
+
+	function toggleRicing() {
+		ricingExpanded = !ricingExpanded;
+	}
 </script>
 
 <div class="min-h-screen bg-zinc-950 text-zinc-100 font-mono">
@@ -220,24 +245,23 @@
 					<h2 class="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">Your Kit</h2>
 
 					<div class="space-y-2">
-						{#each modules as moduleId}
-							{@const status = getModuleStatus(moduleId)}
+						<!-- Top-level modules -->
+						{#each topLevelModules as module}
+							{@const status = getModuleStatus(module.id)}
 							{@const StatusIcon = getStatusIcon(status)}
 							<button
-								on:click={() => navigateToEditor(moduleId)}
+								on:click={() => navigateToEditor(module.id)}
 								class="w-full group flex items-center justify-between p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl hover:bg-zinc-900/60 hover:border-zinc-700/50 transition-all text-left"
 							>
 								<div class="flex items-center gap-4">
 									<div
 										class="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center group-hover:bg-zinc-700 transition-colors"
 									>
-										<svelte:component this={moduleIcons[moduleId]} size={18} class="text-zinc-400" />
+										<svelte:component this={module.icon} size={18} class="text-zinc-400" />
 									</div>
 									<div>
-										<div class="flex items-center gap-2">
-											<span class="font-medium capitalize">{moduleId}</span>
-										</div>
-										<span class="text-sm text-zinc-500">{moduleDescriptions[moduleId]}</span>
+										<span class="font-medium capitalize">{module.id.replace('-', ' ')}</span>
+										<p class="text-sm text-zinc-500">{module.description}</p>
 									</div>
 								</div>
 
@@ -255,6 +279,138 @@
 								</div>
 							</button>
 						{/each}
+
+						<!-- AI Dropdown -->
+						<div class="rounded-xl border border-zinc-800/50 overflow-hidden">
+							<button
+								on:click={toggleAi}
+								class="w-full group flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-900/60 transition-all text-left"
+							>
+								<div class="flex items-center gap-4">
+									<div
+										class="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center group-hover:bg-zinc-700 transition-colors"
+									>
+										<Sparkles size={18} class="text-zinc-400" />
+									</div>
+									<div>
+										<span class="font-medium">AI</span>
+										<p class="text-sm text-zinc-500">Prompts, agents, providers</p>
+									</div>
+								</div>
+
+								<div class="flex items-center gap-3">
+									{#if aiExpanded}
+										<ChevronDown size={16} class="text-zinc-500" />
+									{:else}
+										<ChevronRight size={16} class="text-zinc-500" />
+									{/if}
+								</div>
+							</button>
+
+							{#if aiExpanded}
+								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
+									{#each aiSubItems as item}
+										{@const status = getModuleStatus(item.id)}
+										{@const StatusIcon = getStatusIcon(status)}
+										<button
+											on:click={() => navigateToEditor(item.id)}
+											class="w-full group flex items-center justify-between p-3 pl-8 hover:bg-zinc-900/60 transition-all text-left border-b border-zinc-800/30 last:border-b-0"
+										>
+											<div class="flex items-center gap-3">
+												<div
+													class="w-8 h-8 bg-zinc-800/50 rounded-lg flex items-center justify-center group-hover:bg-zinc-700/50 transition-colors"
+												>
+													<svelte:component this={item.icon} size={14} class="text-zinc-500" />
+												</div>
+												<div>
+													<span class="text-sm font-medium text-zinc-300">{item.label}</span>
+													<p class="text-xs text-zinc-600">{item.description}</p>
+												</div>
+											</div>
+
+											<div class="flex items-center gap-3">
+												<span class="flex items-center gap-1.5 text-xs {getStatusColor(status)}">
+													{#if StatusIcon}
+														<svelte:component this={StatusIcon} size={10} />
+													{/if}
+													{getStatusText(status)}
+												</span>
+												<ChevronRight
+													size={14}
+													class="text-zinc-700 group-hover:text-zinc-500 transition-colors"
+												/>
+											</div>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+
+						<!-- Ricing Dropdown -->
+						<div class="rounded-xl border border-zinc-800/50 overflow-hidden">
+							<button
+								on:click={toggleRicing}
+								class="w-full group flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-900/60 transition-all text-left"
+							>
+								<div class="flex items-center gap-4">
+									<div
+										class="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center group-hover:bg-zinc-700 transition-colors"
+									>
+										<Palette size={18} class="text-zinc-400" />
+									</div>
+									<div>
+										<span class="font-medium">Ricing</span>
+										<p class="text-sm text-zinc-500">Themes, fonts, wallpapers</p>
+									</div>
+								</div>
+
+								<div class="flex items-center gap-3">
+									{#if ricingExpanded}
+										<ChevronDown size={16} class="text-zinc-500" />
+									{:else}
+										<ChevronRight size={16} class="text-zinc-500" />
+									{/if}
+								</div>
+							</button>
+
+							{#if ricingExpanded}
+								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
+									{#each ricingSubItems as item}
+										{@const status = getModuleStatus(item.id)}
+										{@const StatusIcon = getStatusIcon(status)}
+										<button
+											on:click={() => navigateToEditor(item.id)}
+											class="w-full group flex items-center justify-between p-3 pl-8 hover:bg-zinc-900/60 transition-all text-left border-b border-zinc-800/30 last:border-b-0"
+										>
+											<div class="flex items-center gap-3">
+												<div
+													class="w-8 h-8 bg-zinc-800/50 rounded-lg flex items-center justify-center group-hover:bg-zinc-700/50 transition-colors"
+												>
+													<svelte:component this={item.icon} size={14} class="text-zinc-500" />
+												</div>
+												<div>
+													<span class="text-sm font-medium text-zinc-300">{item.label}</span>
+													<p class="text-xs text-zinc-600">{item.description}</p>
+												</div>
+											</div>
+
+											<div class="flex items-center gap-3">
+												<span class="flex items-center gap-1.5 text-xs {getStatusColor(status)}">
+													{#if StatusIcon}
+														<svelte:component this={StatusIcon} size={10} />
+													{/if}
+													{getStatusText(status)}
+												</span>
+												<ChevronRight
+													size={14}
+													class="text-zinc-700 group-hover:text-zinc-500 transition-colors"
+												/>
+											</div>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 

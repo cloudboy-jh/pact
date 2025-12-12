@@ -30,9 +30,15 @@
 	let repoFiles: GitHubFile[] = [];
 	let expandedFolders: Set<string> = new Set();
 
-	// pact.json parsed sections
-	let pactSections: string[] = [];
+	// pact.json parsed sections - now supports nested structure
+	interface PactSection {
+		id: string;
+		label: string;
+		children?: PactSection[];
+	}
+	let pactSections: PactSection[] = [];
 	let pactJsonExpanded = true;
+	let expandedPactSections: Set<string> = new Set();
 
 	// Current file being edited
 	let currentFile: 'pact.json' | string = 'pact.json';
@@ -94,11 +100,24 @@
 			currentContent = await github.getFileContent(username, 'pact.json');
 			currentFile = 'pact.json';
 
-			// Parse sections from pact.json
+			// Parse sections from pact.json - handle nested structure
 			try {
 				const parsed = JSON.parse(currentContent);
 				if (parsed.modules) {
-					pactSections = Object.keys(parsed.modules);
+					pactSections = Object.entries(parsed.modules).map(([key, value]) => {
+						const section: PactSection = { id: key, label: key };
+						// Check if this module has nested sub-sections (like ai.prompts)
+						if (value && typeof value === 'object' && !Array.isArray(value)) {
+							const subKeys = Object.keys(value as object).filter(k => !k.startsWith('//'));
+							if (subKeys.length > 0 && typeof (value as Record<string, unknown>)[subKeys[0]] === 'object') {
+								section.children = subKeys.map(subKey => ({
+									id: `${key}.${subKey}`,
+									label: subKey
+								}));
+							}
+						}
+						return section;
+					});
 				}
 			} catch {
 				// Invalid JSON, no sections
@@ -187,29 +206,40 @@
 		}
 	}
 
-	function findAndHighlightSection(sectionName: string) {
-		// Find the line numbers for this section in the JSON
+	function findAndHighlightSection(sectionPath: string) {
+		// Support nested paths like "ai.prompts"
+		const parts = sectionPath.split('.');
 		const lines = currentContent.split('\n');
+		
 		let startLine = -1;
 		let endLine = -1;
 		let depth = 0;
-		let inSection = false;
-
-		const sectionPattern = new RegExp(`^\\s*"${sectionName}"\\s*:`);
+		let currentPartIndex = 0;
+		let searchingForPart = true;
+		let foundAllParts = false;
 
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-
-			if (!inSection && sectionPattern.test(line)) {
-				startLine = i + 1; // 1-indexed
-				inSection = true;
-				// Count opening braces on this line
-				depth = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
-				if (depth === 0 && line.includes('{')) depth = 1;
-				continue;
+			
+			if (searchingForPart && currentPartIndex < parts.length) {
+				const partPattern = new RegExp(`^\\s*"${parts[currentPartIndex]}"\\s*:`);
+				
+				if (partPattern.test(line)) {
+					currentPartIndex++;
+					
+					if (currentPartIndex === parts.length) {
+						// Found the final part, start tracking
+						startLine = i + 1; // 1-indexed
+						searchingForPart = false;
+						foundAllParts = true;
+						depth = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+						if (depth === 0 && line.includes('{')) depth = 1;
+					}
+					continue;
+				}
 			}
 
-			if (inSection) {
+			if (foundAllParts && !searchingForPart) {
 				depth += (line.match(/{/g) || []).length;
 				depth -= (line.match(/}/g) || []).length;
 
@@ -494,13 +524,51 @@
 									<span>full file</span>
 								</button>
 								{#each pactSections as section}
-									<button
-										on:click={() => highlightSection(section)}
-										class="w-full flex items-center gap-2 px-3 py-1 text-xs hover:bg-zinc-800/50 rounded transition-colors text-zinc-400 hover:text-zinc-200"
-									>
-										<ChevronRight size={12} />
-										<span>{section}</span>
-									</button>
+									{#if section.children && section.children.length > 0}
+										<!-- Section with children (e.g., ai, ricing) -->
+										<div>
+											<button
+												on:click={() => {
+													if (expandedPactSections.has(section.id)) {
+														expandedPactSections.delete(section.id);
+													} else {
+														expandedPactSections.add(section.id);
+													}
+													expandedPactSections = expandedPactSections;
+												}}
+												class="w-full flex items-center gap-2 px-3 py-1 text-xs hover:bg-zinc-800/50 rounded transition-colors text-zinc-400 hover:text-zinc-200"
+											>
+												{#if expandedPactSections.has(section.id)}
+													<ChevronDown size={12} />
+												{:else}
+													<ChevronRight size={12} />
+												{/if}
+												<span>{section.label}</span>
+											</button>
+											{#if expandedPactSections.has(section.id)}
+												<div class="ml-4 border-l border-zinc-800/50">
+													{#each section.children as child}
+														<button
+															on:click={() => highlightSection(child.id)}
+															class="w-full flex items-center gap-2 px-3 py-1 text-xs hover:bg-zinc-800/50 rounded transition-colors text-zinc-500 hover:text-zinc-300"
+														>
+															<ChevronRight size={10} />
+															<span>{child.label}</span>
+														</button>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									{:else}
+										<!-- Simple section (e.g., shell, editor) -->
+										<button
+											on:click={() => highlightSection(section.id)}
+											class="w-full flex items-center gap-2 px-3 py-1 text-xs hover:bg-zinc-800/50 rounded transition-colors text-zinc-400 hover:text-zinc-200"
+										>
+											<ChevronRight size={12} />
+											<span>{section.label}</span>
+										</button>
+									{/if}
 								{/each}
 							</div>
 						{/if}

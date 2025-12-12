@@ -32,6 +32,16 @@
 					source: './editor/nvim/',
 					target: '~/.config/nvim',
 					strategy: 'symlink'
+				},
+				'// example_keybindings': {
+					source: './editor/keybindings.json',
+					target: '~/.config/Code/User/keybindings.json',
+					strategy: 'symlink'
+				},
+				'// example_snippets': {
+					source: './editor/snippets/',
+					target: '~/.config/Code/User/snippets/',
+					strategy: 'symlink'
 				}
 			},
 			terminal: {},
@@ -42,8 +52,22 @@
 					strategy: 'symlink'
 				}
 			},
-			ai: {},
-			tools: {}
+			'cli-tools': {},
+			scripts: {},
+			dotfiles: {},
+			ai: {
+				prompts: {},
+				agents: {},
+				providers: {},
+				mcp: {}
+			},
+			ricing: {
+				themes: {},
+				fonts: {},
+				wallpapers: {},
+				colors: {},
+				icons: {}
+			}
 		},
 		secrets: [
 			'// ANTHROPIC_API_KEY',
