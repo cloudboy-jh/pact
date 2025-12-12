@@ -17,8 +17,20 @@
 		Check,
 		Loader2,
 		X,
-		FileJson
+		FileJson,
+		ExternalLink,
+		Sparkles
 	} from 'lucide-svelte';
+
+	// LLM providers for "Open in" dropdown
+	const llmProviders = [
+		{ id: 'claude', name: 'Claude', url: 'https://claude.ai/new', favicon: 'https://www.google.com/s2/favicons?domain=claude.ai&sz=32' },
+		{ id: 'chatgpt', name: 'ChatGPT', url: 'https://chat.openai.com/', favicon: 'https://www.google.com/s2/favicons?domain=chat.openai.com&sz=32' },
+		{ id: 'gemini', name: 'Gemini', url: 'https://gemini.google.com/app', favicon: 'https://www.google.com/s2/favicons?domain=gemini.google.com&sz=32' },
+		{ id: 'grok', name: 'Grok', url: 'https://grok.x.ai/', favicon: 'https://www.google.com/s2/favicons?domain=x.ai&sz=32' }
+	];
+
+	let showLlmDropdown = false;
 
 	// State
 	let loading = true;
@@ -380,6 +392,56 @@
 		goto('/dashboard');
 	}
 
+	function generateLlmPrompt(): string {
+		const username = $auth.user?.login || 'user';
+		return `I'm using Pact (https://github.com/cloudboy-jh/pact) to manage my development environment configuration.
+
+Pact stores dev environment configs (shell, editor, terminal, git, AI tools, themes, etc.) in a single pact.json manifest file in a GitHub repo called "my-pact".
+
+Here's my current pact.json configuration:
+
+\`\`\`json
+${currentContent}
+\`\`\`
+
+Please help me edit this configuration. You can:
+- Add new module configurations
+- Modify existing settings
+- Suggest improvements based on best practices
+- Help me set up new tools or customize existing ones
+
+The pact.json structure uses:
+- "modules" for different config categories (shell, editor, terminal, git, cli-tools, scripts, dotfiles, ai, ricing)
+- File references like "./shell/darwin.zshrc" that point to actual config files in the repo
+- "source" for the file path in the repo, "target" for where it should be symlinked/copied on the system
+- "strategy" can be "symlink" or "copy"
+
+When suggesting changes, please provide the updated JSON that I can copy back into my pact.json file.`;
+	}
+
+	function openInLlm(provider: typeof llmProviders[0]) {
+		const prompt = generateLlmPrompt();
+		
+		// Copy prompt to clipboard
+		navigator.clipboard.writeText(prompt).then(() => {
+			// Open the LLM in a new tab
+			window.open(provider.url, '_blank');
+		}).catch(() => {
+			// If clipboard fails, still open the URL
+			window.open(provider.url, '_blank');
+		});
+		
+		showLlmDropdown = false;
+	}
+
+	function toggleLlmDropdown() {
+		showLlmDropdown = !showLlmDropdown;
+	}
+
+	function closeLlmDropdown() {
+		showLlmDropdown = false;
+	}
+
 	$: isJson = currentFile.endsWith('.json');
 </script>
 
@@ -464,7 +526,7 @@
 				</div>
 			</div>
 
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-3">
 				{#if saveStatus === 'saving'}
 					<div class="flex items-center gap-2 text-sm text-zinc-400">
 						<Loader2 size={14} class="animate-spin" />
@@ -478,6 +540,50 @@
 				{:else if saveStatus === 'error'}
 					<div class="flex items-center gap-2 text-sm text-red-400">
 						<span>Save failed</span>
+					</div>
+				{/if}
+
+				<!-- Open in LLM Dropdown -->
+				{#if currentFile === 'pact.json'}
+					<div class="relative">
+						<button
+							on:click={toggleLlmDropdown}
+							class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm hover:bg-zinc-700 hover:border-zinc-600 transition-all"
+						>
+							<Sparkles size={14} class="text-purple-400" />
+							<span>Open in AI</span>
+							<ChevronDown size={12} class="text-zinc-500" />
+						</button>
+
+						{#if showLlmDropdown}
+							<!-- Backdrop to close dropdown -->
+							<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+							<div 
+								class="fixed inset-0 z-40" 
+								on:click={closeLlmDropdown}
+							></div>
+							
+							<!-- Dropdown menu -->
+							<div class="absolute right-0 top-full mt-1 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]">
+								<div class="p-2 border-b border-zinc-800">
+									<p class="text-xs text-zinc-500">Copies config + context to clipboard</p>
+								</div>
+								{#each llmProviders as provider}
+									<button
+										on:click={() => openInLlm(provider)}
+										class="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors text-left"
+									>
+										<img 
+											src={provider.favicon} 
+											alt={provider.name} 
+											class="w-4 h-4 rounded"
+										/>
+										<span class="text-sm text-zinc-200">{provider.name}</span>
+										<ExternalLink size={12} class="text-zinc-500 ml-auto" />
+									</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
