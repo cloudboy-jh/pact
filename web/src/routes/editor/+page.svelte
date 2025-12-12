@@ -765,8 +765,7 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 			</div>
 
 			<!-- Right Panel: Editor -->
-			<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-			<div class="flex-1 flex flex-col overflow-hidden" on:click={handleEditorClick}>
+			<div class="flex-1 flex flex-col overflow-hidden">
 				{#if loading}
 					<div class="flex-1 flex items-center justify-center">
 						<Loader2 size={24} class="animate-spin text-zinc-500" />
@@ -778,6 +777,7 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 						language={isJson ? 'json' : 'text'}
 						{highlightLines}
 						on:change={handleContentChange}
+						on:click={handleEditorClick}
 					/>
 				{/if}
 			</div>

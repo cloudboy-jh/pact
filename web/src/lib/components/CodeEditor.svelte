@@ -13,7 +13,7 @@
 	export let readonly: boolean = false;
 	export let highlightLines: { from: number; to: number } | null = null;
 
-	const dispatch = createEventDispatcher<{ change: string }>();
+	const dispatch = createEventDispatcher<{ change: string; click: void }>();
 
 	let editorContainer: HTMLDivElement;
 	let view: EditorView | null = null;
@@ -226,7 +226,14 @@
 	}
 </script>
 
-<div bind:this={editorContainer} class="h-full w-full overflow-auto"></div>
+<div 
+	bind:this={editorContainer} 
+	class="h-full w-full overflow-auto"
+	on:click={() => dispatch('click')}
+	on:keydown
+	role="textbox"
+	tabindex="0"
+></div>
 
 <style>
 	div :global(.cm-editor) {
