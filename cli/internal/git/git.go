@@ -3,7 +3,6 @@ package git
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -12,25 +11,18 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-// Clone clones the user's my-pact repo to ~/.pact/
-func Clone(token, username string) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	pactDir := filepath.Join(home, ".pact")
-
+// Clone clones the user's my-pact repo to the specified directory
+func Clone(token, username, targetDir string) error {
 	// Remove existing directory if it exists
-	if _, err := os.Stat(pactDir); err == nil {
-		if err := os.RemoveAll(pactDir); err != nil {
+	if _, err := os.Stat(targetDir); err == nil {
+		if err := os.RemoveAll(targetDir); err != nil {
 			return fmt.Errorf("failed to remove existing .pact directory: %w", err)
 		}
 	}
 
 	repoURL := fmt.Sprintf("https://github.com/%s/my-pact.git", username)
 
-	_, err = git.PlainClone(pactDir, false, &git.CloneOptions{
+	_, err := git.PlainClone(targetDir, false, &git.CloneOptions{
 		URL: repoURL,
 		Auth: &http.BasicAuth{
 			Username: "x-access-token",
@@ -46,14 +38,7 @@ func Clone(token, username string) error {
 }
 
 // Pull pulls the latest changes from the remote
-func Pull(token string) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	pactDir := filepath.Join(home, ".pact")
-
+func Pull(token, pactDir string) error {
 	repo, err := git.PlainOpen(pactDir)
 	if err != nil {
 		return fmt.Errorf("failed to open repo: %w", err)
@@ -84,14 +69,7 @@ func Pull(token string) error {
 }
 
 // Push commits and pushes local changes to the remote
-func Push(token, message string) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	pactDir := filepath.Join(home, ".pact")
-
+func Push(token, pactDir, message string) error {
 	repo, err := git.PlainOpen(pactDir)
 	if err != nil {
 		return fmt.Errorf("failed to open repo: %w", err)
@@ -161,14 +139,7 @@ func Push(token, message string) error {
 }
 
 // HasChanges checks if there are uncommitted changes
-func HasChanges() (bool, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return false, err
-	}
-
-	pactDir := filepath.Join(home, ".pact")
-
+func HasChanges(pactDir string) (bool, error) {
 	repo, err := git.PlainOpen(pactDir)
 	if err != nil {
 		return false, err
@@ -188,14 +159,7 @@ func HasChanges() (bool, error) {
 }
 
 // GetStatus returns the git status of the pact repo
-func GetStatus() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	pactDir := filepath.Join(home, ".pact")
-
+func GetStatus(pactDir string) (string, error) {
 	repo, err := git.PlainOpen(pactDir)
 	if err != nil {
 		return "", err

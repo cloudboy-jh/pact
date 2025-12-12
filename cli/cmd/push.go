@@ -20,10 +20,17 @@ var (
 var pushCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push local changes to GitHub",
-	Long:  `Commit and push all local changes in ~/.pact/ to GitHub.`,
+	Long:  `Commit and push all local changes in .pact/ to GitHub.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !config.Exists() {
 			fmt.Println("Pact is not initialized. Run 'pact init' first.")
+			os.Exit(1)
+		}
+
+		// Get pact directory
+		pactDir, err := config.GetPactDir()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -35,7 +42,7 @@ var pushCmd = &cobra.Command{
 		}
 
 		// Check for changes
-		hasChanges, err := git.HasChanges()
+		hasChanges, err := git.HasChanges(pactDir)
 		if err != nil {
 			fmt.Printf("Error checking for changes: %v\n", err)
 			os.Exit(1)
@@ -61,7 +68,7 @@ var pushCmd = &cobra.Command{
 
 		// Push
 		fmt.Println("Pushing changes...")
-		if err := git.Push(token, message); err != nil {
+		if err := git.Push(token, pactDir, message); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}

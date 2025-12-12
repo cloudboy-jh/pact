@@ -42,21 +42,14 @@ username/my-pact/
 
 ### Install
 
-**macOS (Homebrew)**
+**macOS/Linux (Homebrew)**
 ```bash
-# Coming soon
-brew install pact
+brew install cloudboy-jh/tap/pact
 ```
 
 **From GitHub Releases**
 ```bash
-# Download the latest release for your platform from:
-# https://github.com/cloudboy-jh/pact/releases
-
-# macOS/Linux
-curl -sSL https://github.com/cloudboy-jh/pact/releases/latest/download/pact-$(uname -s)-$(uname -m) -o pact
-chmod +x pact
-sudo mv pact /usr/local/bin/
+# Download from https://github.com/cloudboy-jh/pact/releases
 ```
 
 **From Source**
@@ -69,7 +62,9 @@ sudo mv pact /usr/local/bin/
 ### Getting Started
 
 ```bash
-# 1. Initialize (authenticates with GitHub, creates/clones your pact repo)
+cd my-project
+
+# 1. Initialize (authenticates with GitHub, clones your pact repo to ./.pact/)
 pact init
 
 # 2. Edit your configuration
@@ -83,6 +78,8 @@ pact sync
 # 4. Check status
 pact
 ```
+
+Pact works like `git` — it creates a `.pact/` folder in your project and walks up the directory tree to find it. Your GitHub token is stored globally in your OS keychain.
 
 ### Commands
 
@@ -100,8 +97,8 @@ pact
 | `pact secret set <name>` | Store a secret in OS keychain |
 | `pact secret list` | List secrets and their status |
 | `pact secret remove <name>` | Remove a secret from keychain |
-| `pact reset` | Remove all symlinks (keeps ~/.pact/) |
-| `pact nuke` | Full cleanup (symlinks + ~/.pact/ + token) |
+| `pact reset` | Remove all symlinks (keeps .pact/) |
+| `pact nuke` | Full cleanup (symlinks + .pact/ + token) |
 
 ### Editing Your Pact
 
@@ -121,13 +118,14 @@ pact sync                 # Pull changes to local
 
 ### Syncing Across Machines
 
-On a new machine:
+On a new machine or in a new project:
 ```bash
-pact init                 # Clones your existing pact repo
+cd my-project
+pact init                 # Clones your existing pact repo to ./.pact/
 pact sync                 # Applies all configs
 ```
 
-Changes sync through GitHub — edit on one machine, pull on another.
+Changes sync through GitHub — edit on one machine, pull on another. Each project gets its own `.pact/` folder, all connected to the same `my-pact` repo.
 
 ### Secrets
 
@@ -199,7 +197,7 @@ pact secret list
 
 | Strategy | Behavior | Use when |
 |----------|----------|----------|
-| `symlink` | Creates symlink from target to source | Edits in ~/.pact/ reflect immediately |
+| `symlink` | Creates symlink from target to source | Edits in .pact/ reflect immediately |
 | `copy` | Copies file to target location | App doesn't follow symlinks |
 
 ### Cross-OS Support
@@ -325,6 +323,16 @@ pact/
 3. **Cross-OS by default** — Darwin, Windows, Linux configs coexist
 4. **Secrets stay local** — API keys in OS keychain, never in repo
 5. **Files not strings** — Configs as files, not inline JSON
+
+---
+
+## Releases
+
+| Version | Date | Notes |
+|---------|------|-------|
+| v0.1.0 | Dec 2024 | Initial release with Homebrew support |
+
+---
 
 ## License
 

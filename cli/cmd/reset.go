@@ -12,7 +12,7 @@ import (
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Remove all symlinks",
-	Long:  `Remove all symlinks created by pact. Keeps ~/.pact/ intact.`,
+	Long:  `Remove all symlinks created by pact. Keeps .pact/ intact.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !config.Exists() {
 			fmt.Println("Pact is not initialized.")
@@ -46,6 +46,6 @@ var resetCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\n%d removed, %d skipped\n", removed, skipped)
-		fmt.Println("~/.pact/ directory kept intact. Run 'pact nuke' to remove it.")
+		fmt.Println(".pact/ directory kept intact. Run 'pact nuke' to remove it.")
 	},
 }

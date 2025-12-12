@@ -111,13 +111,72 @@ type SyncItem struct {
 	IsDir    bool
 }
 
-// GetPactDir returns the pact directory path (~/.pact)
+// GetPactDir returns the pact directory path
+// It searches for .pact/ in current directory and walks up the tree (like git)
+// Falls back to ~/.pact/ for backwards compatibility
 func GetPactDir() (string, error) {
+	// First, look for .pact in current directory and walk up
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	dir := cwd
+	for {
+		pactDir := filepath.Join(dir, ".pact")
+		if info, err := os.Stat(pactDir); err == nil && info.IsDir() {
+			return pactDir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached root, no .pact found
+			break
+		}
+		dir = parent
+	}
+
+	// Fallback to ~/.pact for backwards compatibility
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 	return filepath.Join(home, ".pact"), nil
+}
+
+// GetLocalPactDir returns .pact/ in the current working directory
+// Used by init to create the local .pact folder
+func GetLocalPactDir() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	return filepath.Join(cwd, ".pact"), nil
+}
+
+// FindPactDir searches for .pact/ starting from current directory
+// Returns empty string if not found (does not fall back to ~/.pact)
+func FindPactDir() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+
+	dir := cwd
+	for {
+		pactDir := filepath.Join(dir, ".pact")
+		if info, err := os.Stat(pactDir); err == nil && info.IsDir() {
+			return pactDir
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	return ""
 }
 
 // GetConfigPath returns the path to pact.json

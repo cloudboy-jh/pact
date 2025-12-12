@@ -23,6 +23,13 @@ var syncCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Get pact directory
+		pactDir, err := config.GetPactDir()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
 		// Get token for pull
 		token, err := keyring.GetToken()
 		if err != nil {
@@ -32,7 +39,7 @@ var syncCmd = &cobra.Command{
 
 		// Pull latest changes
 		fmt.Println("Pulling latest changes...")
-		if err := git.Pull(token); err != nil {
+		if err := git.Pull(token, pactDir); err != nil {
 			fmt.Printf("Warning: Could not pull: %v\n", err)
 		} else {
 			fmt.Println("✓ Pulled latest changes")

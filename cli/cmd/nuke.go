@@ -17,22 +17,19 @@ var nukeForce bool
 var nukeCmd = &cobra.Command{
 	Use:   "nuke",
 	Short: "Remove pact completely",
-	Long:  `Remove all symlinks, delete ~/.pact/, and remove stored token.`,
+	Long:  `Remove all symlinks, delete .pact/, and remove stored token.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if !config.Exists() {
-			// Check if .pact dir exists even without config
-			pactDir, _ := config.GetPactDir()
-			if _, err := os.Stat(pactDir); os.IsNotExist(err) {
-				fmt.Println("Pact is not initialized. Nothing to remove.")
-				return
-			}
+		pactDir := config.FindPactDir()
+		if pactDir == "" {
+			fmt.Println("Pact is not initialized. Nothing to remove.")
+			return
 		}
 
 		// Confirm unless --force
 		if !nukeForce {
 			fmt.Println("This will:")
 			fmt.Println("  - Remove all symlinks created by pact")
-			fmt.Println("  - Delete ~/.pact/ directory")
+			fmt.Printf("  - Delete %s directory\n", pactDir)
 			fmt.Println("  - Remove stored GitHub token from keychain")
 			fmt.Println()
 			fmt.Print("Are you sure? [y/N] ")
@@ -62,12 +59,11 @@ var nukeCmd = &cobra.Command{
 		}
 
 		// Delete .pact directory
-		pactDir, _ := config.GetPactDir()
-		fmt.Println("Deleting ~/.pact/...")
+		fmt.Printf("Deleting %s...\n", pactDir)
 		if err := os.RemoveAll(pactDir); err != nil {
-			fmt.Printf("  ✗ Error removing ~/.pact/: %v\n", err)
+			fmt.Printf("  ✗ Error removing %s: %v\n", pactDir, err)
 		} else {
-			fmt.Println("  ✓ Deleted ~/.pact/")
+			fmt.Printf("  ✓ Deleted %s\n", pactDir)
 		}
 
 		// Remove token from keychain

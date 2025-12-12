@@ -17,12 +17,12 @@ var fromUser string
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize pact with GitHub OAuth",
-	Long:  `Authenticate with GitHub and clone your pact repo to ~/.pact/`,
+	Short: "Initialize pact in current directory",
+	Long:  `Authenticate with GitHub and clone your pact repo to ./.pact/ in the current directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check if already initialized
-		if config.Exists() {
-			fmt.Println("Pact is already initialized at ~/.pact/")
+		// Check if already initialized in this directory tree
+		if config.FindPactDir() != "" {
+			fmt.Printf("Pact is already initialized at %s\n", config.FindPactDir())
 			fmt.Println("Run 'pact nuke' first if you want to start fresh.")
 			return
 		}
@@ -106,7 +106,7 @@ func setupRepo(token, username string) error {
 	}
 
 	// Check if repo exists
-	fmt.Printf("Checking for %s/pact repo...\n", targetUser)
+	fmt.Printf("Checking for %s/my-pact repo...\n", targetUser)
 	exists, err := auth.RepoExists(token, targetUser)
 	if err != nil {
 		return fmt.Errorf("failed to check repo: %w", err)
@@ -117,19 +117,25 @@ func setupRepo(token, username string) error {
 		if err := auth.CreateRepo(token); err != nil {
 			return fmt.Errorf("failed to create repo: %w", err)
 		}
-		fmt.Println("✓ Created repo")
+		fmt.Println("✓ Created my-pact repo")
 
 		// Wait a moment for GitHub to initialize the repo
 		time.Sleep(2 * time.Second)
 	}
 
-	// Clone repo
-	fmt.Println("Cloning to ~/.pact/...")
-	if err := git.Clone(token, targetUser); err != nil {
+	// Get local pact directory (current working directory)
+	pactDir, err := config.GetLocalPactDir()
+	if err != nil {
+		return fmt.Errorf("failed to get pact directory: %w", err)
+	}
+
+	// Clone repo to ./.pact/
+	fmt.Println("Cloning to ./.pact/...")
+	if err := git.Clone(token, targetUser, pactDir); err != nil {
 		return fmt.Errorf("failed to clone: %w", err)
 	}
 
-	fmt.Println("✓ Cloned repo to ~/.pact/")
+	fmt.Println("✓ Cloned repo to ./.pact/")
 
 	// Check if pact.json exists, if not create a default one
 	if !config.Exists() {
@@ -137,7 +143,7 @@ func setupRepo(token, username string) error {
 		if err := createDefaultConfig(username); err != nil {
 			return fmt.Errorf("failed to create default config: %w", err)
 		}
-		fmt.Println("✓ Created default pact.json")
+		fmt.Println("✓ Created pact.json")
 	}
 
 	fmt.Println()

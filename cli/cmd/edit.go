@@ -51,8 +51,8 @@ var editCmd = &cobra.Command{
 	Short: "Edit pact files locally or open web editor",
 	Long: `Edit pact configuration files.
 
-Without arguments, opens ~/.pact/pact.json in your $EDITOR.
-With a path, opens that file/directory relative to ~/.pact/.
+Without arguments, opens .pact/pact.json in your $EDITOR.
+With a path, opens that file/directory relative to .pact/.
 
 Use 'pact edit web' to open the web editor in your browser.
 
