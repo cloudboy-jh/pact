@@ -333,8 +333,8 @@ Releases are automatic on every push to `master` that changes CLI code. Version 
 
 | Version | Date | Notes |
 |---------|------|-------|
-| v0.1.x | Dec 2024 | Interactive sync, theme module, local .pact/ |
-| v0.1.0 | Dec 2024 | Initial release with Homebrew support |
+| v0.1.x | Dec 2025 | Interactive sync, theme module, local .pact/ |
+| v0.1.0 | Dec 2025 | Initial release with Homebrew support |
 
 ---
 
