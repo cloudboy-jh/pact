@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: pact
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pact
+    main: ./main.go
+    binary: pact
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/cloudboy-jh/pact/cmd.Version={{.Version}}
+
+archives:
+  - id: pact
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+brews:
+  - name: pact
+    repository:
+      owner: cloudboy-jh
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/cloudboy-jh/pact"
+    description: "Pact CLI - Sync your dotfiles and configurations"
+    license: "MIT"
+    install: |
+      bin.install "pact"
+    test: |
+      system "#{bin}/pact", "--help"
