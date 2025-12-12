@@ -71,7 +71,7 @@ type ModuleStatus struct {
 
 // GetModuleStatuses returns the status of all modules
 func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
-	modules := []string{"shell", "editor", "terminal", "git", "ai", "tools", "keybindings", "snippets", "fonts"}
+	modules := []string{"shell", "editor", "terminal", "git", "ai", "tools", "keybindings", "snippets", "fonts", "theme"}
 	var statuses []ModuleStatus
 
 	for _, module := range modules {
@@ -83,7 +83,7 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 		// Check if module is configured
 		switch module {
 		case "shell":
-			if cfg.Modules.Shell == nil || len(cfg.Modules.Shell) == 0 {
+			if len(cfg.Modules.Shell) == 0 {
 				status.Status = "not_configured"
 			} else if _, ok := cfg.Modules.Shell[config.GetCurrentOS()]; !ok {
 				status.Status = "not_configured"
@@ -91,7 +91,7 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 				status.Status = "synced" // TODO: actually check sync status
 			}
 		case "editor":
-			if cfg.Modules.Editor == nil || len(cfg.Modules.Editor) == 0 {
+			if len(cfg.Modules.Editor) == 0 {
 				status.Status = "not_configured"
 			} else {
 				status.Status = "synced"
@@ -103,7 +103,7 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 				status.Status = "synced"
 			}
 		case "git":
-			if cfg.Modules.Git == nil || len(cfg.Modules.Git) == 0 {
+			if len(cfg.Modules.Git) == 0 {
 				status.Status = "not_configured"
 			} else {
 				status.Status = "synced"
@@ -121,19 +121,25 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 				status.Status = "synced"
 			}
 		case "keybindings":
-			if cfg.Modules.Keybindings == nil || len(cfg.Modules.Keybindings) == 0 {
+			if len(cfg.Modules.Keybindings) == 0 {
 				status.Status = "not_configured"
 			} else {
 				status.Status = "synced"
 			}
 		case "snippets":
-			if cfg.Modules.Snippets == nil || len(cfg.Modules.Snippets) == 0 {
+			if len(cfg.Modules.Snippets) == 0 {
 				status.Status = "not_configured"
 			} else {
 				status.Status = "synced"
 			}
 		case "fonts":
 			if cfg.Modules.Fonts == nil || len(cfg.Modules.Fonts.Install) == 0 {
+				status.Status = "not_configured"
+			} else {
+				status.Status = "synced"
+			}
+		case "theme":
+			if len(cfg.Modules.Theme) == 0 {
 				status.Status = "not_configured"
 			} else {
 				status.Status = "synced"

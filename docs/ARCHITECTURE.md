@@ -151,6 +151,59 @@ Authenticate with GitHub and clone/create the pact repo to `./.pact/` in current
 
 **File:** `/cli/cmd/sync.go`
 
+Pull latest changes from GitHub and apply configs with interactive module selection.
+
+**Arguments:**
+| Arg | Description |
+|-----|-------------|
+| (none) | Interactive mode - shows module picker |
+| `[module]` | Sync specific module directly (e.g., `shell`, `editor`, `theme`) |
+
+**Interactive Flow:**
+```
+$ pact sync
+
+Pulling latest changes...
+✓ Pulled latest changes
+
+Found 6 modules in pact.json:
+
+  [1] shell        2 files
+  [2] editor       12 files (nvim, vscode)
+  [3] git          2 files
+  [4] ai           3 files (prompts, agents)
+  [5] tools        1 file
+  [6] theme        4 files (colors, wallpaper)
+
+Options:
+  Enter numbers separated by commas (e.g., 1,3,5)
+  'a' or 'all' to sync all modules
+  'q' or 'quit' to cancel
+
+Select modules: 1,2,6
+
+Syncing shell...
+Syncing editor...
+Syncing theme...
+  ✓ shell/darwin synced
+  ✓ editor/nvim synced
+  ✓ theme/colors synced
+
+3 synced, 0 failed, 0 skipped
+```
+
+**Direct Module Sync:**
+```bash
+pact sync shell    # Syncs shell module directly without prompt
+pact sync theme    # Syncs theme module directly without prompt
+```
+
+---
+
+### 3a. Sync Command (Legacy Documentation)
+
+**File:** `/cli/cmd/sync.go`
+
 Pull latest changes from GitHub and apply configs.
 
 **Arguments:**
@@ -292,7 +345,7 @@ type PactConfig struct {
 // All module configurations
 type ModulesConfig struct {
     Shell       map[string]ModuleEntry `json:"shell,omitempty"`
-    Editor      map[string]EditorEntry `json:"editor,omitempty"`
+    Editor      map[string]ModuleEntry `json:"editor,omitempty"`
     Terminal    *TerminalEntry         `json:"terminal,omitempty"`
     Git         map[string]ModuleEntry `json:"git,omitempty"`
     AI          *AIConfig              `json:"ai,omitempty"`
@@ -301,6 +354,7 @@ type ModulesConfig struct {
     Snippets    map[string]ModuleEntry `json:"snippets,omitempty"`
     Fonts       *FontsConfig           `json:"fonts,omitempty"`
     Runtimes    *RuntimesConfig        `json:"runtimes,omitempty"`
+    Theme       map[string]ModuleEntry `json:"theme,omitempty"`
 }
 
 // Basic module entry (source → target mapping)
@@ -308,13 +362,6 @@ type ModuleEntry struct {
     Source   string      `json:"source"`
     Target   interface{} `json:"target"` // string or map[string]string for OS-specific
     Strategy string      `json:"strategy,omitempty"` // "symlink" or "copy"
-}
-
-// Editor entry
-type EditorEntry struct {
-    Source   string      `json:"source"`
-    Target   interface{} `json:"target"`
-    Strategy string      `json:"strategy,omitempty"`
 }
 
 // Terminal emulator configuration
@@ -395,6 +442,9 @@ type SyncItem struct {
 | `ExpandPath(path)` | Expands `~` to home directory |
 | `ResolveTarget(target)` | Resolves OS-specific target paths |
 | `GetSyncItems()` | Returns all items to sync for current OS |
+| `GetSyncItemsForModule(name)` | Returns sync items for a specific module |
+| `GetAvailableModules()` | Returns list of configured modules with file counts |
+| `CountModuleFiles(module)` | Counts files in a module |
 | `CountModuleFiles(module)` | Counts files in a module |
 
 #### Target Resolution
@@ -713,6 +763,20 @@ zinc900 = lipgloss.Color("#18181b")
       "python": "3.12.0",
       "go": "1.22.0",
       "manager": "asdf"
+    },
+    "theme": {
+      "colors": {
+        "source": "./theme/colors.json",
+        "target": "~/.config/colors/scheme.json"
+      },
+      "wallpaper": {
+        "source": "./theme/wallpaper.png",
+        "target": "~/.config/wallpaper/current.png"
+      },
+      "gtk": {
+        "source": "./theme/gtk/",
+        "target": "~/.config/gtk-3.0/"
+      }
     }
   },
   "secrets": [
@@ -737,6 +801,7 @@ zinc900 = lipgloss.Color("#18181b")
 | `snippets` | App name (freeform) | Snippet directories |
 | `fonts` | `install` array | Fonts to install |
 | `runtimes` | Runtime name | Version manager configs |
+| `theme` | Theme item name (freeform) | Colors, wallpapers, GTK, icons, cursors |
 
 ---
 

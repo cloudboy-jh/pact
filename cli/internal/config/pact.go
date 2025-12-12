@@ -20,7 +20,7 @@ type PactConfig struct {
 // ModulesConfig contains all module configurations
 type ModulesConfig struct {
 	Shell       map[string]ModuleEntry `json:"shell,omitempty"`
-	Editor      map[string]EditorEntry `json:"editor,omitempty"`
+	Editor      map[string]ModuleEntry `json:"editor,omitempty"`
 	Terminal    *TerminalEntry         `json:"terminal,omitempty"`
 	Git         map[string]ModuleEntry `json:"git,omitempty"`
 	AI          *AIConfig              `json:"ai,omitempty"`
@@ -29,17 +29,11 @@ type ModulesConfig struct {
 	Snippets    map[string]ModuleEntry `json:"snippets,omitempty"`
 	Fonts       *FontsConfig           `json:"fonts,omitempty"`
 	Runtimes    *RuntimesConfig        `json:"runtimes,omitempty"`
+	Theme       map[string]ModuleEntry `json:"theme,omitempty"`
 }
 
 // ModuleEntry represents a simple source/target mapping
 type ModuleEntry struct {
-	Source   string      `json:"source"`
-	Target   interface{} `json:"target"` // Can be string or map[string]string
-	Strategy string      `json:"strategy,omitempty"`
-}
-
-// EditorEntry represents editor config with OS-specific targets
-type EditorEntry struct {
 	Source   string      `json:"source"`
 	Target   interface{} `json:"target"` // Can be string or map[string]string
 	Strategy string      `json:"strategy,omitempty"`
@@ -310,6 +304,28 @@ func (c *PactConfig) GetSyncItems() ([]SyncItem, error) {
 		}
 	}
 
+	// Theme module
+	if c.Modules.Theme != nil {
+		for name, entry := range c.Modules.Theme {
+			target, err := ResolveTarget(entry.Target)
+			if err != nil {
+				continue // Skip if no target for current OS
+			}
+			source := filepath.Join(pactDir, entry.Source)
+			info, statErr := os.Stat(source)
+			isDir := statErr == nil && info.IsDir()
+
+			items = append(items, SyncItem{
+				Module:   "theme",
+				Name:     name,
+				Source:   source,
+				Target:   target,
+				Strategy: entry.Strategy,
+				IsDir:    isDir,
+			})
+		}
+	}
+
 	// Terminal module
 	if c.Modules.Terminal != nil {
 		target, err := ResolveTarget(c.Modules.Terminal.Target)
@@ -468,4 +484,159 @@ func countFilesInDir(dir string) int {
 		return nil
 	})
 	return count
+}
+
+// ModuleInfo represents information about a module for display
+type ModuleInfo struct {
+	Name      string
+	FileCount int
+	Items     []string // Sub-items (e.g., "nvim", "vscode" for editor)
+}
+
+// GetAvailableModules returns all modules that have configuration
+func (c *PactConfig) GetAvailableModules() []ModuleInfo {
+	var modules []ModuleInfo
+
+	// Shell
+	if c.Modules.Shell != nil && len(c.Modules.Shell) > 0 {
+		var items []string
+		for name := range c.Modules.Shell {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "shell",
+			FileCount: c.CountModuleFiles("shell"),
+			Items:     items,
+		})
+	}
+
+	// Editor
+	if c.Modules.Editor != nil && len(c.Modules.Editor) > 0 {
+		var items []string
+		for name := range c.Modules.Editor {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "editor",
+			FileCount: c.CountModuleFiles("editor"),
+			Items:     items,
+		})
+	}
+
+	// Terminal
+	if c.Modules.Terminal != nil {
+		modules = append(modules, ModuleInfo{
+			Name:      "terminal",
+			FileCount: c.CountModuleFiles("terminal"),
+			Items:     []string{c.Modules.Terminal.Emulator},
+		})
+	}
+
+	// Git
+	if c.Modules.Git != nil && len(c.Modules.Git) > 0 {
+		var items []string
+		for name := range c.Modules.Git {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "git",
+			FileCount: c.CountModuleFiles("git"),
+			Items:     items,
+		})
+	}
+
+	// AI
+	if c.Modules.AI != nil {
+		hasContent := false
+		var items []string
+		if c.Modules.AI.Agents != nil && len(c.Modules.AI.Agents) > 0 {
+			hasContent = true
+			items = append(items, "agents")
+		}
+		if c.Modules.AI.Prompts != nil && len(c.Modules.AI.Prompts) > 0 {
+			hasContent = true
+			items = append(items, "prompts")
+		}
+		if c.Modules.AI.Providers != nil && len(c.Modules.AI.Providers) > 0 {
+			hasContent = true
+			items = append(items, "providers")
+		}
+		if hasContent {
+			modules = append(modules, ModuleInfo{
+				Name:      "ai",
+				FileCount: c.CountModuleFiles("ai"),
+				Items:     items,
+			})
+		}
+	}
+
+	// Tools
+	if c.Modules.Tools != nil && c.Modules.Tools.Configs != nil && len(c.Modules.Tools.Configs) > 0 {
+		var items []string
+		for name := range c.Modules.Tools.Configs {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "tools",
+			FileCount: c.CountModuleFiles("tools"),
+			Items:     items,
+		})
+	}
+
+	// Keybindings
+	if c.Modules.Keybindings != nil && len(c.Modules.Keybindings) > 0 {
+		var items []string
+		for name := range c.Modules.Keybindings {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "keybindings",
+			FileCount: c.CountModuleFiles("keybindings"),
+			Items:     items,
+		})
+	}
+
+	// Snippets
+	if c.Modules.Snippets != nil && len(c.Modules.Snippets) > 0 {
+		var items []string
+		for name := range c.Modules.Snippets {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "snippets",
+			FileCount: c.CountModuleFiles("snippets"),
+			Items:     items,
+		})
+	}
+
+	// Theme
+	if c.Modules.Theme != nil && len(c.Modules.Theme) > 0 {
+		var items []string
+		for name := range c.Modules.Theme {
+			items = append(items, name)
+		}
+		modules = append(modules, ModuleInfo{
+			Name:      "theme",
+			FileCount: c.CountModuleFiles("theme"),
+			Items:     items,
+		})
+	}
+
+	return modules
+}
+
+// GetSyncItemsForModule returns sync items for a specific module only
+func (c *PactConfig) GetSyncItemsForModule(moduleName string) ([]SyncItem, error) {
+	allItems, err := c.GetSyncItems()
+	if err != nil {
+		return nil, err
+	}
+
+	var items []SyncItem
+	for _, item := range allItems {
+		if item.Module == moduleName {
+			items = append(items, item)
+		}
+	}
+	return items, nil
 }

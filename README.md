@@ -33,7 +33,8 @@ username/my-pact/
 ├── tools/                 # lazygit, ripgrep, fzf configs
 ├── keybindings/           # Editor keybindings
 ├── snippets/              # Code snippets
-└── fonts/                 # Font preferences
+├── fonts/                 # Font preferences
+└── theme/                 # Colors, wallpapers, icons
 ```
 
 ---
@@ -90,8 +91,8 @@ Pact works like `git` — it creates a `.pact/` folder in your project and walks
 | `pact edit` | Edit pact.json in $EDITOR |
 | `pact edit <path>` | Edit specific file/module (e.g., `pact edit shell`) |
 | `pact edit web` | Open web editor in browser |
-| `pact sync` | Pull latest + apply all module configs |
-| `pact sync <module>` | Sync a specific module only |
+| `pact sync` | Interactive module picker - select which modules to sync |
+| `pact sync <module>` | Sync a specific module directly (shell, editor, theme, etc.) |
 | `pact push` | Commit and push local changes |
 | `pact status` | Show status (non-interactive) |
 | `pact secret set <name>` | Store a secret in OS keychain |
