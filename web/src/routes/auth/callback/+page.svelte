@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
-	import { GitHubClient, GITHUB_CLIENT_ID } from '$lib/github';
+	import { GitHubClient } from '$lib/github';
 
 	let error = '';
 	let status = 'Authenticating...';
@@ -18,14 +18,6 @@
 
 		try {
 			status = 'Exchanging code for token...';
-			
-			// Note: In production, this should go through a backend to keep client_secret secure
-			// For now, we'll use a proxy approach or the user needs to set up a backend
-			// This is a simplified version that assumes a token is returned directly
-			
-			// Exchange code for token via proxy/backend
-			// For development, you can use a service like https://github-oauth-proxy.vercel.app
-			// or set up your own backend endpoint
 			
 			const response = await fetch('/api/auth/callback', {
 				method: 'POST',
@@ -57,39 +49,19 @@
 			const user = await userResponse.json();
 			auth.setUser(user);
 
-			status = 'Checking for pact repo...';
+			status = 'Checking your account...';
 			
-			// Check if user has pact repo, create if not
+			// Check if user has my-pact repo
 			const github = new GitHubClient(access_token);
 			const repoExists = await github.repoExists(user.login);
 			
-			if (!repoExists) {
-				status = 'Creating your pact repo...';
-				await github.createRepo();
-				
-				// Wait a moment for GitHub to initialize
-				await new Promise(resolve => setTimeout(resolve, 2000));
-				
-				// Create initial pact.json
-				status = 'Setting up initial configuration...';
-				const initialConfig = {
-					version: '1.0.0',
-					user: user.login,
-					modules: {
-						shell: {},
-						editor: {},
-						git: {},
-						ai: { providers: {}, prompts: {}, agents: {} },
-						tools: { configs: {} }
-					},
-					secrets: []
-				};
-				
-				await github.savePactConfig(user.login, initialConfig);
+			if (repoExists) {
+				// Existing user, go to dashboard
+				goto('/dashboard');
+			} else {
+				// New user, go to setup
+				goto('/setup');
 			}
-
-			status = 'Redirecting to dashboard...';
-			goto('/dashboard');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Authentication failed';
 			console.error('Auth error:', e);
@@ -98,7 +70,12 @@
 </script>
 
 <div class="min-h-screen bg-zinc-950 text-zinc-100 font-mono flex items-center justify-center">
-	<div class="text-center space-y-4">
+	<!-- Subtle grid background -->
+	<div
+		class="fixed inset-0 bg-[linear-gradient(rgba(39,39,42,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(39,39,42,0.3)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"
+	></div>
+
+	<div class="relative z-10 text-center space-y-4">
 		{#if error}
 			<div class="text-red-400">
 				<p class="text-xl font-bold">Authentication Error</p>

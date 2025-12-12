@@ -140,7 +140,7 @@
 	}
 
 	function navigateToEditor(moduleId: string) {
-		goto(`/editor/${moduleId}`);
+		goto(`/editor?section=${moduleId}`);
 	}
 
 	const modules = ['shell', 'editor', 'terminal', 'git', 'ai', 'tools', 'keybindings', 'snippets', 'fonts'];
