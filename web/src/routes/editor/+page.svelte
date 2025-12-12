@@ -25,7 +25,7 @@
 	// LLM providers for "Open in" dropdown
 	const llmProviders = [
 		{ id: 'claude', name: 'Claude', url: 'https://claude.ai/new', favicon: 'https://www.google.com/s2/favicons?domain=claude.ai&sz=32' },
-		{ id: 'chatgpt', name: 'ChatGPT', url: 'https://chat.openai.com/', favicon: 'https://www.google.com/s2/favicons?domain=chat.openai.com&sz=32' },
+		{ id: 'chatgpt', name: 'ChatGPT', url: 'https://chat.openai.com/', favicon: 'https://cdn.oaistatic.com/assets/favicon-o4x1jcxe.svg' },
 		{ id: 'gemini', name: 'Gemini', url: 'https://gemini.google.com/app', favicon: 'https://www.google.com/s2/favicons?domain=gemini.google.com&sz=32' },
 		{ id: 'grok', name: 'Grok', url: 'https://grok.x.ai/', favicon: 'https://www.google.com/s2/favicons?domain=x.ai&sz=32' }
 	];
@@ -576,19 +576,19 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 							<!-- Backdrop to close dropdown -->
 							<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 							<div 
-								class="fixed inset-0" 
+								class="fixed inset-0 z-40" 
 								on:click={closeLlmDropdown}
 							></div>
 							
 							<!-- Dropdown menu -->
-							<div class="absolute right-0 top-full mt-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]">
+							<div class="absolute right-0 top-full mt-1 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]">
 								<div class="p-2 border-b border-zinc-800">
 									<p class="text-xs text-zinc-500">Copies config + context to clipboard</p>
 								</div>
 								{#each llmProviders as provider}
 									<button
 										on:click|stopPropagation={() => openInLlm(provider)}
-										class="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors text-left"
+										class="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors text-left relative z-50"
 									>
 										<img 
 											src={provider.favicon} 
