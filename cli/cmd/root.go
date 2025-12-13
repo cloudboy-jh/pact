@@ -12,13 +12,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var versionFlag bool
+
 var rootCmd = &cobra.Command{
 	Use:   "pact",
 	Short: "Your portable dev identity",
-	Long:  `Pact - Your portable dev identity. Shell, editor, AI prefs, themes — one kit, any machine.`,
+	Long:  ui.RenderLogo() + "\nYour portable dev identity. Shell, editor, AI prefs, themes — one kit, any machine.",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Handle --version flag
+		if versionFlag {
+			fmt.Println(ui.RenderLogoWithVersion())
+			return
+		}
+
 		// Check if pact is initialized
 		if !config.Exists() {
+			fmt.Println(ui.RenderLogo())
 			fmt.Println("Pact is not initialized. Run 'pact init' to get started.")
 			os.Exit(1)
 		}
@@ -41,6 +50,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(pushCmd)

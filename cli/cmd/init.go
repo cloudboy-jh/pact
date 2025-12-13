@@ -9,6 +9,7 @@ import (
 	"github.com/cloudboy-jh/pact/internal/config"
 	"github.com/cloudboy-jh/pact/internal/git"
 	"github.com/cloudboy-jh/pact/internal/keyring"
+	"github.com/cloudboy-jh/pact/internal/ui"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,9 @@ var initCmd = &cobra.Command{
 	Short: "Initialize pact in current directory",
 	Long:  `Authenticate with GitHub and clone your pact repo to ./.pact/ in the current directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Show logo with welcome message
+		fmt.Println(ui.RenderLogo())
+
 		// Check if already initialized in this directory tree
 		if config.FindPactDir() != "" {
 			fmt.Printf("Pact is already initialized at %s\n", config.FindPactDir())

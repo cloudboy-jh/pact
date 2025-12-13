@@ -21,7 +21,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X github.com/cloudboy-jh/pact/cmd.Version={{.Version}}
+      - -s -w -X github.com/cloudboy-jh/pact/internal/ui.Version={{.Version}}
 
 archives:
   - id: pact
@@ -56,3 +56,13 @@ brews:
       bin.install "pact"
     test: |
       system "#{bin}/pact", "--help"
+
+scoops:
+  - name: pact
+    repository:
+      owner: cloudboy-jh
+      name: pact-bucket
+      token: "{{ .Env.SCOOP_BUCKET_GITHUB_TOKEN }}"
+    homepage: "https://github.com/cloudboy-jh/pact"
+    description: "Cross-platform developer environment manager"
+    license: "MIT"
