@@ -110,7 +110,14 @@
 			}
 		}
 		
-		if (!current || (typeof current === 'object' && Object.keys(current as object).length === 0)) {
+		if (!current || typeof current !== 'object') {
+			return 'not_configured';
+		}
+		
+		// Filter out comment keys (keys starting with "//")
+		const keys = Object.keys(current as object).filter(k => !k.startsWith('//'));
+		
+		if (keys.length === 0) {
 			return 'not_configured';
 		}
 		return 'synced';
