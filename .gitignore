@@ -1,2 +1,9 @@
 .env.local
 node_modules/
+
+# Build artifacts
+cli/pact
+cli/pact.exe
+
+# Cache and reports
+.churn/
