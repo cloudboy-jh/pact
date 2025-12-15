@@ -33,9 +33,23 @@ export interface GitHubRepo {
 
 export interface PactConfig {
 	version: string;
-	user: string;
-	modules: Record<string, unknown>;
-	secrets: string[];
+	user?: string;
+	name?: string;
+	modules?: Record<string, unknown>;
+	secrets?: string[];
+	// Top-level module fields (new format)
+	shell?: Record<string, unknown>;
+	editor?: Record<string, unknown>;
+	terminal?: Record<string, unknown>;
+	git?: Record<string, unknown>;
+	llm?: Record<string, unknown>;
+	cli?: Record<string, unknown>;
+	apps?: Record<string, unknown>;
+	ai?: Record<string, unknown>;
+	ricing?: Record<string, unknown>;
+	scripts?: Record<string, unknown>;
+	dotfiles?: Record<string, unknown>;
+	[key: string]: unknown;
 }
 
 // Get the OAuth authorization URL

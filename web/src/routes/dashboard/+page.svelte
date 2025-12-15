@@ -37,32 +37,33 @@
 	let aiExpanded = false;
 	let ricingExpanded = false;
 
-	// Top-level modules
+	// Top-level modules - support both old (cli-tools) and new (cli) formats
 	const topLevelModules = [
-		{ id: 'shell', icon: Terminal, description: 'Shell configuration' },
-		{ id: 'editor', icon: Cpu, description: 'Editor settings, keybindings, snippets' },
-		{ id: 'terminal', icon: Terminal, description: 'Terminal emulator' },
-		{ id: 'git', icon: Github, description: 'Git configuration' },
-		{ id: 'cli-tools', icon: FileCode, description: 'CLI tool configs' },
-		{ id: 'scripts', icon: ScrollText, description: 'Personal utility scripts' },
-		{ id: 'dotfiles', icon: FolderDot, description: 'Misc dotfiles' }
+		{ id: 'shell', icon: Terminal, description: 'Shell configuration', altIds: [] },
+		{ id: 'editor', icon: Cpu, description: 'Editor settings, keybindings, snippets', altIds: [] },
+		{ id: 'terminal', icon: Terminal, description: 'Terminal emulator', altIds: [] },
+		{ id: 'git', icon: Github, description: 'Git configuration', altIds: [] },
+		{ id: 'cli', icon: FileCode, description: 'CLI tool configs', altIds: ['cli-tools'] },
+		{ id: 'scripts', icon: ScrollText, description: 'Personal utility scripts', altIds: [] },
+		{ id: 'dotfiles', icon: FolderDot, description: 'Misc dotfiles', altIds: [] },
+		{ id: 'apps', icon: Cpu, description: 'Application shortcuts', altIds: [] }
 	];
 
-	// AI dropdown sub-items
+	// AI/LLM dropdown sub-items - support both ai.* and llm.* formats
 	const aiSubItems = [
-		{ id: 'ai.prompts', label: 'Prompts', icon: MessageSquare, description: 'AI prompts' },
-		{ id: 'ai.agents', label: 'Agents', icon: Bot, description: 'CLAUDE.md, .cursorrules' },
-		{ id: 'ai.providers', label: 'Providers', icon: Key, description: 'API provider configs' },
-		{ id: 'ai.mcp', label: 'MCP', icon: Server, description: 'Model Context Protocol' }
+		{ id: 'llm.providers', label: 'Providers', icon: Key, description: 'API provider configs', altIds: ['ai.providers'] },
+		{ id: 'llm.coding', label: 'Coding', icon: Bot, description: 'Coding agents & models', altIds: ['ai.agents'] },
+		{ id: 'llm.chat', label: 'Chat', icon: MessageSquare, description: 'Chat providers', altIds: ['ai.prompts'] },
+		{ id: 'llm.local', label: 'Local', icon: Server, description: 'Local models (Ollama)', altIds: ['ai.mcp'] }
 	];
 
 	// Ricing dropdown sub-items
 	const ricingSubItems = [
-		{ id: 'ricing.themes', label: 'Themes', icon: Paintbrush, description: 'Terminal, editor themes' },
-		{ id: 'ricing.fonts', label: 'Fonts', icon: Type, description: 'Font preferences' },
-		{ id: 'ricing.wallpapers', label: 'Wallpapers/PFPs', icon: Image, description: 'Backgrounds, profile pics' },
-		{ id: 'ricing.colors', label: 'Colors', icon: Droplet, description: 'Color palettes' },
-		{ id: 'ricing.icons', label: 'Icons', icon: Shapes, description: 'Icon packs' }
+		{ id: 'ricing.themes', label: 'Themes', icon: Paintbrush, description: 'Terminal, editor themes', altIds: [] },
+		{ id: 'ricing.fonts', label: 'Fonts', icon: Type, description: 'Font preferences', altIds: [] },
+		{ id: 'ricing.wallpapers', label: 'Wallpapers/PFPs', icon: Image, description: 'Backgrounds, profile pics', altIds: [] },
+		{ id: 'ricing.colors', label: 'Colors', icon: Droplet, description: 'Color palettes', altIds: [] },
+		{ id: 'ricing.icons', label: 'Icons', icon: Shapes, description: 'Icon packs', altIds: [] }
 	];
 
 	let initialized = false;
@@ -95,32 +96,48 @@
 		}
 	}
 
-	function getModuleStatus(modulePath: string): string {
-		if (!pactConfig) return 'not_configured';
-		
-		// Handle nested paths like "ai.prompts"
-		const parts = modulePath.split('.');
-		let current: unknown = pactConfig.modules;
+	function checkPath(config: Record<string, unknown>, path: string): unknown {
+		const parts = path.split('.');
+		let current: unknown = config;
 		
 		for (const part of parts) {
 			if (current && typeof current === 'object' && part in current) {
 				current = (current as Record<string, unknown>)[part];
 			} else {
-				return 'not_configured';
+				return null;
+			}
+		}
+		return current;
+	}
+
+	function getModuleStatus(modulePath: string, altIds: string[] = []): string {
+		if (!pactConfig) return 'not_configured';
+		
+		// Try all possible paths: primary id, alt ids, and modules.* versions
+		const pathsToTry = [
+			modulePath,
+			...altIds,
+			`modules.${modulePath}`,
+			...altIds.map(alt => `modules.${alt}`)
+		];
+		
+		for (const path of pathsToTry) {
+			const result = checkPath(pactConfig as Record<string, unknown>, path);
+			if (result !== null) {
+				// Found something - check if it has valid content
+				if (typeof result === 'object' && result !== null) {
+					const keys = Object.keys(result).filter(k => !k.startsWith('//'));
+					if (keys.length > 0) {
+						return 'synced';
+					}
+				} else if (result !== undefined) {
+					// Non-object value (string, array, etc.) counts as configured
+					return 'synced';
+				}
 			}
 		}
 		
-		if (!current || typeof current !== 'object') {
-			return 'not_configured';
-		}
-		
-		// Filter out comment keys (keys starting with "//")
-		const keys = Object.keys(current as object).filter(k => !k.startsWith('//'));
-		
-		if (keys.length === 0) {
-			return 'not_configured';
-		}
-		return 'synced';
+		return 'not_configured';
 	}
 
 	function getStatusColor(status: string): string {
@@ -254,7 +271,7 @@
 					<div class="space-y-2">
 						<!-- Top-level modules -->
 						{#each topLevelModules as module}
-							{@const status = getModuleStatus(module.id)}
+							{@const status = getModuleStatus(module.id, module.altIds)}
 							{@const StatusIcon = getStatusIcon(status)}
 							<button
 								on:click={() => navigateToEditor(module.id)}
@@ -317,7 +334,7 @@
 							{#if aiExpanded}
 								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
 									{#each aiSubItems as item}
-										{@const status = getModuleStatus(item.id)}
+										{@const status = getModuleStatus(item.id, item.altIds)}
 										{@const StatusIcon = getStatusIcon(status)}
 										<button
 											on:click={() => navigateToEditor(item.id)}
@@ -383,7 +400,7 @@
 							{#if ricingExpanded}
 								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
 									{#each ricingSubItems as item}
-										{@const status = getModuleStatus(item.id)}
+										{@const status = getModuleStatus(item.id, item.altIds)}
 										{@const StatusIcon = getStatusIcon(status)}
 										<button
 											on:click={() => navigateToEditor(item.id)}
