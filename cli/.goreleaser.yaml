@@ -57,4 +57,14 @@ brews:
     test: |
       system "#{bin}/pact", "--help"
 
+scoops:
+  - name: pact
+    repository:
+      owner: cloudboy-jh
+      name: pact-bucket
+      token: "{{ .Env.SCOOP_BUCKET_GITHUB_TOKEN }}"
+    homepage: "https://github.com/cloudboy-jh/pact"
+    description: "Pact CLI - Sync your dotfiles and configurations"
+    license: MIT
+
 
