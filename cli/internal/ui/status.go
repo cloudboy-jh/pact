@@ -15,11 +15,9 @@ var (
 	emerald = lipgloss.Color("#34d399")
 	amber   = lipgloss.Color("#fbbf24")
 	red     = lipgloss.Color("#f87171")
-	zinc400 = lipgloss.Color("#a1a1aa")
 	zinc500 = lipgloss.Color("#71717a")
 	zinc600 = lipgloss.Color("#52525b")
 	zinc800 = lipgloss.Color("#27272a")
-	zinc900 = lipgloss.Color("#18181b")
 
 	// Styles
 	titleStyle = lipgloss.NewStyle().
@@ -64,15 +62,17 @@ var (
 // ModuleStatus represents the status of a module
 type ModuleStatus struct {
 	Name      string
-	Status    string // "synced", "pending", "error", "not_configured"
+	Status    string // "configured", "has_files", "not_configured"
 	FileCount int
-	Error     error
+	Details   string
 }
 
-// GetModuleStatuses returns the status of all modules
+// GetModuleStatuses returns the status of all modules found in config
 func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
-	modules := []string{"shell", "editor", "terminal", "git", "ai", "tools", "keybindings", "snippets", "fonts", "theme"}
 	var statuses []ModuleStatus
+
+	// Get all modules from config (top-level objects)
+	modules := cfg.GetModules()
 
 	for _, module := range modules {
 		status := ModuleStatus{
@@ -80,71 +80,17 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 			FileCount: cfg.CountModuleFiles(module),
 		}
 
-		// Check if module is configured
-		switch module {
-		case "shell":
-			if len(cfg.Modules.Shell) == 0 {
-				status.Status = "not_configured"
-			} else if _, ok := cfg.Modules.Shell[config.GetCurrentOS()]; !ok {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced" // TODO: actually check sync status
-			}
-		case "editor":
-			if len(cfg.Modules.Editor) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "terminal":
-			if cfg.Modules.Terminal == nil {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "git":
-			if len(cfg.Modules.Git) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "ai":
-			if cfg.Modules.AI == nil {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "tools":
-			if cfg.Modules.Tools == nil {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "keybindings":
-			if len(cfg.Modules.Keybindings) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "snippets":
-			if len(cfg.Modules.Snippets) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "fonts":
-			if cfg.Modules.Fonts == nil || len(cfg.Modules.Fonts.Install) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
-		case "theme":
-			if len(cfg.Modules.Theme) == 0 {
-				status.Status = "not_configured"
-			} else {
-				status.Status = "synced"
-			}
+		// Check if module has any files configured
+		if status.FileCount > 0 {
+			status.Status = "has_files"
+		} else if cfg.HasKey(module) {
+			status.Status = "configured"
+		} else {
+			status.Status = "not_configured"
 		}
+
+		// Get some details about the module
+		status.Details = getModuleDetails(cfg, module)
 
 		statuses = append(statuses, status)
 	}
@@ -152,15 +98,64 @@ func GetModuleStatuses(cfg *config.PactConfig) []ModuleStatus {
 	return statuses
 }
 
+// getModuleDetails extracts useful info about a module
+func getModuleDetails(cfg *config.PactConfig, module string) string {
+	var details []string
+
+	switch module {
+	case "shell":
+		if tool := cfg.GetString("shell.prompt.tool"); tool != "" {
+			details = append(details, tool)
+		}
+		if tools := cfg.GetStringSlice("shell.tools"); len(tools) > 0 {
+			details = append(details, tools...)
+		}
+	case "editor":
+		if def := cfg.GetString("editor.default"); def != "" {
+			details = append(details, def)
+		}
+	case "terminal":
+		if font := cfg.GetString("terminal.font"); font != "" {
+			details = append(details, font)
+		}
+	case "git":
+		if user := cfg.GetString("git.user"); user != "" {
+			details = append(details, user)
+		}
+	case "llm":
+		if providers := cfg.GetStringSlice("llm.providers"); len(providers) > 0 {
+			details = append(details, providers...)
+		}
+	case "cli":
+		if tools := cfg.GetStringSlice("cli.tools"); len(tools) > 0 {
+			if len(tools) > 3 {
+				details = append(details, tools[:3]...)
+				details = append(details, "...")
+			} else {
+				details = append(details, tools...)
+			}
+		}
+	}
+
+	if len(details) > 0 {
+		return strings.Join(details, ", ")
+	}
+	return ""
+}
+
 // RenderStatus renders the status box
 func RenderStatus(cfg *config.PactConfig) string {
 	var sb strings.Builder
 
 	// Header
+	name := cfg.GetString("name")
+	if name == "" {
+		name = "pact"
+	}
 	hostname, _ := os.Hostname()
 	header := fmt.Sprintf("%s%s%s",
-		titleStyle.Render("pact"),
-		strings.Repeat(" ", 30),
+		titleStyle.Render(name),
+		strings.Repeat(" ", 30-len(name)),
 		subtitleStyle.Render(hostname),
 	)
 	sb.WriteString(header)
@@ -168,22 +163,30 @@ func RenderStatus(cfg *config.PactConfig) string {
 
 	// Modules
 	statuses := GetModuleStatuses(cfg)
-	for _, status := range statuses {
-		line := renderModuleLine(status)
-		sb.WriteString(line)
+	if len(statuses) == 0 {
+		sb.WriteString(dimStyle.Render("No modules configured"))
 		sb.WriteString("\n")
+	} else {
+		for _, status := range statuses {
+			line := renderModuleLine(status)
+			sb.WriteString(line)
+			sb.WriteString("\n")
+		}
 	}
 
 	// Secrets
-	sb.WriteString("\n")
-	secretsLine := renderSecretsLine(cfg)
-	sb.WriteString(secretsLine)
+	secrets := cfg.GetSecrets()
+	if len(secrets) > 0 {
+		sb.WriteString("\n")
+		secretsLine := renderSecretsLine(secrets)
+		sb.WriteString(secretsLine)
+	}
 
 	content := sb.String()
 	box := boxStyle.Render(content)
 
 	// Help line
-	help := helpStyle.Render("[s] sync  [e] edit (web)  [q] quit")
+	help := helpStyle.Render("[s] sync  [e] edit  [q] quit")
 
 	return box + "\n" + help
 }
@@ -194,15 +197,12 @@ func renderModuleLine(status ModuleStatus) string {
 
 	var statusIcon, statusText string
 	switch status.Status {
-	case "synced":
+	case "has_files":
 		statusIcon = successStyle.Render("✓")
-		statusText = successStyle.Render("synced")
-	case "pending":
-		statusIcon = warningStyle.Render("⚠")
-		statusText = warningStyle.Render("pending")
-	case "error":
-		statusIcon = errorStyle.Render("✗")
-		statusText = errorStyle.Render("error")
+		statusText = successStyle.Render("ready")
+	case "configured":
+		statusIcon = successStyle.Render("●")
+		statusText = dimStyle.Render("config only")
 	case "not_configured":
 		statusIcon = dimStyle.Render(" ")
 		statusText = dimStyle.Render("not configured")
@@ -210,25 +210,27 @@ func renderModuleLine(status ModuleStatus) string {
 
 	statusPart := statusTextStyle.Render(fmt.Sprintf("%s %s", statusIcon, statusText))
 
-	var filesPart string
-	if status.FileCount > 0 {
+	var extra string
+	if status.Details != "" {
+		extra = fileCountStyle.Render(status.Details)
+	} else if status.FileCount > 0 {
 		unit := "files"
 		if status.FileCount == 1 {
 			unit = "file"
 		}
-		filesPart = fileCountStyle.Render(fmt.Sprintf("%d %s", status.FileCount, unit))
+		extra = fileCountStyle.Render(fmt.Sprintf("%d %s", status.FileCount, unit))
 	}
 
-	return fmt.Sprintf("%s %s %s  %s", name, dashes, statusPart, filesPart)
+	return fmt.Sprintf("%s %s %s  %s", name, dashes, statusPart, extra)
 }
 
-func renderSecretsLine(cfg *config.PactConfig) string {
-	if len(cfg.Secrets) == 0 {
+func renderSecretsLine(secrets []string) string {
+	if len(secrets) == 0 {
 		return dimStyle.Render("secrets ──────── none configured")
 	}
 
 	setCount := 0
-	for _, secret := range cfg.Secrets {
+	for _, secret := range secrets {
 		if keyring.HasSecret(secret) {
 			setCount++
 		}
@@ -238,10 +240,10 @@ func renderSecretsLine(cfg *config.PactConfig) string {
 	dashes := dimStyle.Render(strings.Repeat("─", 2))
 
 	var statusPart string
-	if setCount == len(cfg.Secrets) {
-		statusPart = successStyle.Render(fmt.Sprintf("%d/%d set", setCount, len(cfg.Secrets)))
+	if setCount == len(secrets) {
+		statusPart = successStyle.Render(fmt.Sprintf("%d/%d set", setCount, len(secrets)))
 	} else {
-		statusPart = warningStyle.Render(fmt.Sprintf("%d/%d set", setCount, len(cfg.Secrets)))
+		statusPart = warningStyle.Render(fmt.Sprintf("%d/%d set", setCount, len(secrets)))
 	}
 
 	return fmt.Sprintf("%s %s %s", name, dashes, statusPart)

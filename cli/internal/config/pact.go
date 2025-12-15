@@ -9,93 +9,12 @@ import (
 	"strings"
 )
 
-// PactConfig represents the root pact.json structure
+// PactConfig represents a flexible pact.json - any structure is valid
 type PactConfig struct {
-	Version string        `json:"version"`
-	User    string        `json:"user"`
-	Modules ModulesConfig `json:"modules"`
-	Secrets []string      `json:"secrets"`
+	Raw map[string]any // The raw parsed JSON
 }
 
-// ModulesConfig contains all module configurations
-type ModulesConfig struct {
-	Shell       map[string]ModuleEntry `json:"shell,omitempty"`
-	Editor      map[string]ModuleEntry `json:"editor,omitempty"`
-	Terminal    *TerminalEntry         `json:"terminal,omitempty"`
-	Git         map[string]ModuleEntry `json:"git,omitempty"`
-	AI          *AIConfig              `json:"ai,omitempty"`
-	Tools       *ToolsConfig           `json:"tools,omitempty"`
-	Keybindings map[string]ModuleEntry `json:"keybindings,omitempty"`
-	Snippets    map[string]ModuleEntry `json:"snippets,omitempty"`
-	Fonts       *FontsConfig           `json:"fonts,omitempty"`
-	Runtimes    *RuntimesConfig        `json:"runtimes,omitempty"`
-	Theme       map[string]ModuleEntry `json:"theme,omitempty"`
-}
-
-// ModuleEntry represents a simple source/target mapping
-type ModuleEntry struct {
-	Source   string      `json:"source"`
-	Target   interface{} `json:"target"` // Can be string or map[string]string
-	Strategy string      `json:"strategy,omitempty"`
-}
-
-// TerminalEntry represents terminal emulator config
-type TerminalEntry struct {
-	Emulator string      `json:"emulator"`
-	Source   string      `json:"source"`
-	Target   interface{} `json:"target"`
-	Strategy string      `json:"strategy,omitempty"`
-}
-
-// AIConfig represents AI module configuration
-type AIConfig struct {
-	Providers map[string]ProviderConfig `json:"providers,omitempty"`
-	Prompts   map[string]string         `json:"prompts,omitempty"`
-	Skills    string                    `json:"skills,omitempty"`
-	Agents    map[string]AgentEntry     `json:"agents,omitempty"`
-}
-
-// ProviderConfig represents an AI provider configuration
-type ProviderConfig struct {
-	DefaultModel string   `json:"defaultModel,omitempty"`
-	Models       []string `json:"models,omitempty"`
-}
-
-// AgentEntry represents an agent config file mapping
-type AgentEntry struct {
-	Source   string `json:"source"`
-	Target   string `json:"target,omitempty"`
-	Strategy string `json:"strategy,omitempty"`
-}
-
-// ToolsConfig represents tools module configuration
-type ToolsConfig struct {
-	Configs  map[string]ModuleEntry `json:"configs,omitempty"`
-	Packages *PackagesConfig        `json:"packages,omitempty"`
-}
-
-// PackagesConfig represents package lists by manager
-type PackagesConfig struct {
-	Brew  []string `json:"brew,omitempty"`
-	NPM   []string `json:"npm,omitempty"`
-	Cargo []string `json:"cargo,omitempty"`
-	Go    []string `json:"go,omitempty"`
-}
-
-// FontsConfig represents fonts to install
-type FontsConfig struct {
-	Install []string `json:"install,omitempty"`
-}
-
-// RuntimesConfig represents runtime versions
-type RuntimesConfig struct {
-	Node    string `json:"node,omitempty"`
-	Python  string `json:"python,omitempty"`
-	Go      string `json:"go,omitempty"`
-	Manager string `json:"manager,omitempty"`
-}
-
-// SyncItem represents a single item to sync
+// SyncItem represents a single item to sync (for files that have source/target)
 type SyncItem struct {
 	Module   string
 	Name     string
@@ -105,11 +24,17 @@ type SyncItem struct {
 	IsDir    bool
 }
 
+// ModuleInfo represents information about a module for display
+type ModuleInfo struct {
+	Name      string
+	FileCount int
+	Items     []string
+}
+
 // GetPactDir returns the pact directory path
 // It searches for .pact/ in current directory and walks up the tree (like git)
 // Falls back to ~/.pact/ for backwards compatibility
 func GetPactDir() (string, error) {
-	// First, look for .pact in current directory and walk up
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
@@ -124,7 +49,6 @@ func GetPactDir() (string, error) {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			// Reached root, no .pact found
 			break
 		}
 		dir = parent
@@ -139,7 +63,6 @@ func GetPactDir() (string, error) {
 }
 
 // GetLocalPactDir returns .pact/ in the current working directory
-// Used by init to create the local .pact folder
 func GetLocalPactDir() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -182,7 +105,7 @@ func GetConfigPath() (string, error) {
 	return filepath.Join(pactDir, "pact.json"), nil
 }
 
-// Load reads and parses pact.json from ~/.pact/
+// Load reads and parses pact.json flexibly
 func Load() (*PactConfig, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {
@@ -194,12 +117,12 @@ func Load() (*PactConfig, error) {
 		return nil, fmt.Errorf("failed to read pact.json: %w", err)
 	}
 
-	var config PactConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("failed to parse pact.json: %w", err)
 	}
 
-	return &config, nil
+	return &PactConfig{Raw: raw}, nil
 }
 
 // Exists checks if pact.json exists
@@ -212,7 +135,7 @@ func Exists() bool {
 	return err == nil
 }
 
-// GetCurrentOS returns the current OS name matching pact.json keys
+// GetCurrentOS returns the current OS name
 func GetCurrentOS() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -238,12 +161,171 @@ func ExpandPath(path string) (string, error) {
 	return path, nil
 }
 
-// ResolveTarget resolves the target path for the current OS
-func ResolveTarget(target interface{}) (string, error) {
+// Get returns a value from the config by dot-separated path
+// e.g., Get("shell.prompt.tool") or Get("name")
+func (c *PactConfig) Get(path string) any {
+	parts := strings.Split(path, ".")
+	var current any = c.Raw
+
+	for _, part := range parts {
+		if m, ok := current.(map[string]any); ok {
+			current = m[part]
+		} else {
+			return nil
+		}
+	}
+	return current
+}
+
+// GetString returns a string value from the config
+func (c *PactConfig) GetString(path string) string {
+	val := c.Get(path)
+	if s, ok := val.(string); ok {
+		return s
+	}
+	return ""
+}
+
+// GetStringSlice returns a string slice from the config
+func (c *PactConfig) GetStringSlice(path string) []string {
+	val := c.Get(path)
+	if arr, ok := val.([]any); ok {
+		var result []string
+		for _, v := range arr {
+			if s, ok := v.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	return nil
+}
+
+// GetMap returns a map from the config
+func (c *PactConfig) GetMap(path string) map[string]any {
+	val := c.Get(path)
+	if m, ok := val.(map[string]any); ok {
+		return m
+	}
+	return nil
+}
+
+// HasKey checks if a key exists in the config
+func (c *PactConfig) HasKey(path string) bool {
+	return c.Get(path) != nil
+}
+
+// GetTopLevelKeys returns all top-level keys in the config
+func (c *PactConfig) GetTopLevelKeys() []string {
+	var keys []string
+	for k := range c.Raw {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// GetModules returns all top-level keys that look like modules (objects, not primitives)
+func (c *PactConfig) GetModules() []string {
+	var modules []string
+	skip := map[string]bool{"name": true, "version": true, "secrets": true}
+
+	for k, v := range c.Raw {
+		if skip[k] {
+			continue
+		}
+		if _, ok := v.(map[string]any); ok {
+			modules = append(modules, k)
+		}
+	}
+	return modules
+}
+
+// GetSecrets returns the secrets array if it exists
+func (c *PactConfig) GetSecrets() []string {
+	return c.GetStringSlice("secrets")
+}
+
+// GetSyncItems finds all items with source/target for syncing
+// Looks for "files" keys anywhere in the config tree
+func (c *PactConfig) GetSyncItems() ([]SyncItem, error) {
+	pactDir, err := GetPactDir()
+	if err != nil {
+		return nil, err
+	}
+
+	var items []SyncItem
+	c.findFilesRecursive(c.Raw, "", pactDir, &items)
+	return items, nil
+}
+
+// findFilesRecursive walks the config tree looking for "files" objects
+func (c *PactConfig) findFilesRecursive(node any, module string, pactDir string, items *[]SyncItem) {
+	m, ok := node.(map[string]any)
+	if !ok {
+		return
+	}
+
+	// Check if this node has a "files" key
+	if files, ok := m["files"].(map[string]any); ok {
+		for name, fileEntry := range files {
+			if entry, ok := fileEntry.(map[string]any); ok {
+				item := c.parseFileEntry(module, name, entry, pactDir)
+				if item != nil {
+					*items = append(*items, *item)
+				}
+			}
+		}
+	}
+
+	// Recurse into child objects
+	for key, val := range m {
+		if key == "files" {
+			continue
+		}
+		if childMap, ok := val.(map[string]any); ok {
+			nextModule := key
+			if module != "" {
+				nextModule = module // Keep the top-level module name
+			}
+			c.findFilesRecursive(childMap, nextModule, pactDir, items)
+		}
+	}
+}
+
+// parseFileEntry parses a file entry with source/target
+func (c *PactConfig) parseFileEntry(module, name string, entry map[string]any, pactDir string) *SyncItem {
+	source, ok := entry["source"].(string)
+	if !ok {
+		return nil
+	}
+
+	target, err := c.resolveTarget(entry["target"])
+	if err != nil {
+		return nil
+	}
+
+	strategy, _ := entry["strategy"].(string)
+
+	sourcePath := filepath.Join(pactDir, source)
+	info, statErr := os.Stat(sourcePath)
+	isDir := statErr == nil && info.IsDir()
+
+	return &SyncItem{
+		Module:   module,
+		Name:     name,
+		Source:   sourcePath,
+		Target:   target,
+		Strategy: strategy,
+		IsDir:    isDir,
+	}
+}
+
+// resolveTarget resolves the target path for the current OS
+func (c *PactConfig) resolveTarget(target any) (string, error) {
 	switch t := target.(type) {
 	case string:
 		return ExpandPath(t)
-	case map[string]interface{}:
+	case map[string]any:
 		currentOS := GetCurrentOS()
 		if path, ok := t[currentOS]; ok {
 			if pathStr, ok := path.(string); ok {
@@ -256,219 +338,42 @@ func ResolveTarget(target interface{}) (string, error) {
 	}
 }
 
-// GetSyncItems returns all items that need to be synced for the current OS
-func (c *PactConfig) GetSyncItems() ([]SyncItem, error) {
-	pactDir, err := GetPactDir()
-	if err != nil {
-		return nil, err
+// GetAvailableModules returns modules that have files configured for syncing
+func (c *PactConfig) GetAvailableModules() []ModuleInfo {
+	items, _ := c.GetSyncItems()
+
+	// Group by module
+	moduleMap := make(map[string][]string)
+	for _, item := range items {
+		moduleMap[item.Module] = append(moduleMap[item.Module], item.Name)
 	}
 
-	var items []SyncItem
-	currentOS := GetCurrentOS()
-
-	// Shell module
-	if c.Modules.Shell != nil {
-		if entry, ok := c.Modules.Shell[currentOS]; ok {
-			target, err := ResolveTarget(entry.Target)
-			if err == nil {
-				items = append(items, SyncItem{
-					Module:   "shell",
-					Name:     currentOS,
-					Source:   filepath.Join(pactDir, entry.Source),
-					Target:   target,
-					Strategy: entry.Strategy,
-				})
-			}
-		}
+	var modules []ModuleInfo
+	for name, fileNames := range moduleMap {
+		modules = append(modules, ModuleInfo{
+			Name:      name,
+			FileCount: len(fileNames),
+			Items:     fileNames,
+		})
 	}
-
-	// Editor module
-	if c.Modules.Editor != nil {
-		for name, entry := range c.Modules.Editor {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue // Skip if no target for current OS
-			}
-			source := filepath.Join(pactDir, entry.Source)
-			info, statErr := os.Stat(source)
-			isDir := statErr == nil && info.IsDir()
-
-			items = append(items, SyncItem{
-				Module:   "editor",
-				Name:     name,
-				Source:   source,
-				Target:   target,
-				Strategy: entry.Strategy,
-				IsDir:    isDir,
-			})
-		}
-	}
-
-	// Theme module
-	if c.Modules.Theme != nil {
-		for name, entry := range c.Modules.Theme {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue // Skip if no target for current OS
-			}
-			source := filepath.Join(pactDir, entry.Source)
-			info, statErr := os.Stat(source)
-			isDir := statErr == nil && info.IsDir()
-
-			items = append(items, SyncItem{
-				Module:   "theme",
-				Name:     name,
-				Source:   source,
-				Target:   target,
-				Strategy: entry.Strategy,
-				IsDir:    isDir,
-			})
-		}
-	}
-
-	// Terminal module
-	if c.Modules.Terminal != nil {
-		target, err := ResolveTarget(c.Modules.Terminal.Target)
-		if err == nil {
-			items = append(items, SyncItem{
-				Module:   "terminal",
-				Name:     c.Modules.Terminal.Emulator,
-				Source:   filepath.Join(pactDir, c.Modules.Terminal.Source),
-				Target:   target,
-				Strategy: c.Modules.Terminal.Strategy,
-			})
-		}
-	}
-
-	// Git module
-	if c.Modules.Git != nil {
-		for name, entry := range c.Modules.Git {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue
-			}
-			items = append(items, SyncItem{
-				Module:   "git",
-				Name:     name,
-				Source:   filepath.Join(pactDir, entry.Source),
-				Target:   target,
-				Strategy: entry.Strategy,
-			})
-		}
-	}
-
-	// AI agents
-	if c.Modules.AI != nil && c.Modules.AI.Agents != nil {
-		for name, agent := range c.Modules.AI.Agents {
-			if agent.Target == "" {
-				continue // No target means it's project-local only
-			}
-			target, err := ExpandPath(agent.Target)
-			if err != nil {
-				continue
-			}
-			items = append(items, SyncItem{
-				Module:   "ai",
-				Name:     name,
-				Source:   filepath.Join(pactDir, agent.Source),
-				Target:   target,
-				Strategy: agent.Strategy,
-			})
-		}
-	}
-
-	// Tools configs
-	if c.Modules.Tools != nil && c.Modules.Tools.Configs != nil {
-		for name, entry := range c.Modules.Tools.Configs {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue
-			}
-			items = append(items, SyncItem{
-				Module:   "tools",
-				Name:     name,
-				Source:   filepath.Join(pactDir, entry.Source),
-				Target:   target,
-				Strategy: entry.Strategy,
-			})
-		}
-	}
-
-	// Keybindings
-	if c.Modules.Keybindings != nil {
-		for name, entry := range c.Modules.Keybindings {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue
-			}
-			items = append(items, SyncItem{
-				Module:   "keybindings",
-				Name:     name,
-				Source:   filepath.Join(pactDir, entry.Source),
-				Target:   target,
-				Strategy: entry.Strategy,
-			})
-		}
-	}
-
-	// Snippets
-	if c.Modules.Snippets != nil {
-		for name, entry := range c.Modules.Snippets {
-			target, err := ResolveTarget(entry.Target)
-			if err != nil {
-				continue
-			}
-			source := filepath.Join(pactDir, entry.Source)
-			info, statErr := os.Stat(source)
-			isDir := statErr == nil && info.IsDir()
-
-			items = append(items, SyncItem{
-				Module:   "snippets",
-				Name:     name,
-				Source:   source,
-				Target:   target,
-				Strategy: entry.Strategy,
-				IsDir:    isDir,
-			})
-		}
-	}
-
-	return items, nil
+	return modules
 }
 
 // CountModuleFiles counts files for a module
 func (c *PactConfig) CountModuleFiles(module string) int {
-	pactDir, err := GetPactDir()
-	if err != nil {
-		return 0
-	}
-
-	count := 0
 	items, _ := c.GetSyncItems()
+	count := 0
 	for _, item := range items {
 		if item.Module == module {
-			source := item.Source
 			if item.IsDir {
-				count += countFilesInDir(source)
+				count += countFilesInDir(item.Source)
 			} else {
-				if _, err := os.Stat(source); err == nil {
+				if _, err := os.Stat(item.Source); err == nil {
 					count++
 				}
 			}
 		}
 	}
-
-	// Special handling for AI prompts and skills
-	if module == "ai" && c.Modules.AI != nil {
-		if c.Modules.AI.Prompts != nil {
-			count += len(c.Modules.AI.Prompts)
-		}
-		if c.Modules.AI.Skills != "" {
-			skillsDir := filepath.Join(pactDir, c.Modules.AI.Skills)
-			count += countFilesInDir(skillsDir)
-		}
-	}
-
 	return count
 }
 
@@ -484,145 +389,6 @@ func countFilesInDir(dir string) int {
 		return nil
 	})
 	return count
-}
-
-// ModuleInfo represents information about a module for display
-type ModuleInfo struct {
-	Name      string
-	FileCount int
-	Items     []string // Sub-items (e.g., "nvim", "vscode" for editor)
-}
-
-// GetAvailableModules returns all modules that have configuration
-func (c *PactConfig) GetAvailableModules() []ModuleInfo {
-	var modules []ModuleInfo
-
-	// Shell
-	if c.Modules.Shell != nil && len(c.Modules.Shell) > 0 {
-		var items []string
-		for name := range c.Modules.Shell {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "shell",
-			FileCount: c.CountModuleFiles("shell"),
-			Items:     items,
-		})
-	}
-
-	// Editor
-	if c.Modules.Editor != nil && len(c.Modules.Editor) > 0 {
-		var items []string
-		for name := range c.Modules.Editor {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "editor",
-			FileCount: c.CountModuleFiles("editor"),
-			Items:     items,
-		})
-	}
-
-	// Terminal
-	if c.Modules.Terminal != nil {
-		modules = append(modules, ModuleInfo{
-			Name:      "terminal",
-			FileCount: c.CountModuleFiles("terminal"),
-			Items:     []string{c.Modules.Terminal.Emulator},
-		})
-	}
-
-	// Git
-	if c.Modules.Git != nil && len(c.Modules.Git) > 0 {
-		var items []string
-		for name := range c.Modules.Git {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "git",
-			FileCount: c.CountModuleFiles("git"),
-			Items:     items,
-		})
-	}
-
-	// AI
-	if c.Modules.AI != nil {
-		hasContent := false
-		var items []string
-		if c.Modules.AI.Agents != nil && len(c.Modules.AI.Agents) > 0 {
-			hasContent = true
-			items = append(items, "agents")
-		}
-		if c.Modules.AI.Prompts != nil && len(c.Modules.AI.Prompts) > 0 {
-			hasContent = true
-			items = append(items, "prompts")
-		}
-		if c.Modules.AI.Providers != nil && len(c.Modules.AI.Providers) > 0 {
-			hasContent = true
-			items = append(items, "providers")
-		}
-		if hasContent {
-			modules = append(modules, ModuleInfo{
-				Name:      "ai",
-				FileCount: c.CountModuleFiles("ai"),
-				Items:     items,
-			})
-		}
-	}
-
-	// Tools
-	if c.Modules.Tools != nil && c.Modules.Tools.Configs != nil && len(c.Modules.Tools.Configs) > 0 {
-		var items []string
-		for name := range c.Modules.Tools.Configs {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "tools",
-			FileCount: c.CountModuleFiles("tools"),
-			Items:     items,
-		})
-	}
-
-	// Keybindings
-	if c.Modules.Keybindings != nil && len(c.Modules.Keybindings) > 0 {
-		var items []string
-		for name := range c.Modules.Keybindings {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "keybindings",
-			FileCount: c.CountModuleFiles("keybindings"),
-			Items:     items,
-		})
-	}
-
-	// Snippets
-	if c.Modules.Snippets != nil && len(c.Modules.Snippets) > 0 {
-		var items []string
-		for name := range c.Modules.Snippets {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "snippets",
-			FileCount: c.CountModuleFiles("snippets"),
-			Items:     items,
-		})
-	}
-
-	// Theme
-	if c.Modules.Theme != nil && len(c.Modules.Theme) > 0 {
-		var items []string
-		for name := range c.Modules.Theme {
-			items = append(items, name)
-		}
-		modules = append(modules, ModuleInfo{
-			Name:      "theme",
-			FileCount: c.CountModuleFiles("theme"),
-			Items:     items,
-		})
-	}
-
-	return modules
 }
 
 // GetSyncItemsForModule returns sync items for a specific module only

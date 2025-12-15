@@ -7,17 +7,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cloudboy-jh/pact/internal/apply"
 	"github.com/cloudboy-jh/pact/internal/config"
 	"github.com/cloudboy-jh/pact/internal/git"
 	"github.com/cloudboy-jh/pact/internal/keyring"
-	"github.com/cloudboy-jh/pact/internal/sync"
-	"github.com/cloudboy-jh/pact/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 var syncCmd = &cobra.Command{
 	Use:   "sync [module]",
-	Short: "Sync configs from GitHub",
+	Short: "Sync and apply configs",
 	Long: `Pull latest changes from GitHub and apply module configs.
 
 Without arguments, shows an interactive picker to select modules.
@@ -25,9 +24,11 @@ With a module name, syncs that specific module directly.
 
 Examples:
   pact sync              # Interactive module picker
-  pact sync shell        # Sync only shell module
-  pact sync editor       # Sync only editor module
-  pact sync theme        # Sync only theme module`,
+  pact sync shell        # Install shell tools, configure prompt
+  pact sync cli          # Install CLI tools (bun, node, lazygit, etc.)
+  pact sync git          # Configure git (user, email, default branch)
+  pact sync editor       # Setup editor preferences
+  pact sync all          # Apply everything`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if !config.Exists() {
@@ -65,71 +66,58 @@ Examples:
 			os.Exit(1)
 		}
 
-		// Get available modules
-		modules := cfg.GetAvailableModules()
+		// Get available modules from config
+		modules := cfg.GetModules()
 		if len(modules) == 0 {
-			fmt.Println("No modules configured in pact.json")
+			fmt.Println("No modules found in pact.json")
 			return
 		}
 
 		var modulesToSync []string
 
 		if len(args) > 0 {
-			// Specific module requested - sync directly without prompt
-			modulesToSync = []string{args[0]}
+			arg := strings.ToLower(args[0])
+			if arg == "all" {
+				modulesToSync = modules
+			} else {
+				modulesToSync = []string{args[0]}
+			}
 		} else {
 			// Interactive mode - show picker
-			modulesToSync = promptModuleSelection(modules)
+			modulesToSync = promptModuleSelection(cfg, modules)
 			if len(modulesToSync) == 0 {
 				fmt.Println("No modules selected. Cancelled.")
 				return
 			}
 		}
 
-		// Sync selected modules
+		// Apply selected modules
 		fmt.Println()
-		var allResults []sync.Result
+		var allResults []apply.Result
+
 		for _, moduleName := range modulesToSync {
-			fmt.Printf("Syncing %s...\n", moduleName)
-			results, err := sync.SyncModule(cfg, moduleName)
+			fmt.Printf("Applying %s...\n", moduleName)
+			results, err := apply.ApplyModule(cfg, moduleName)
 			if err != nil {
-				fmt.Printf("  Error syncing %s: %v\n", moduleName, err)
+				fmt.Printf("  Error applying %s: %v\n", moduleName, err)
 				continue
 			}
 			allResults = append(allResults, results...)
 		}
 
-		// Convert to UI results and render
-		uiResults := make([]ui.SyncResult, len(allResults))
-		for i, r := range allResults {
-			uiResults[i] = ui.SyncResult{
-				Module:  r.Module,
-				Name:    r.Name,
-				Success: r.Success,
-				Skipped: r.Skipped,
-				Error:   r.Error,
-			}
-		}
-
+		// Render results
 		fmt.Println()
-		fmt.Println(ui.RenderSyncResults(uiResults))
+		renderApplyResults(allResults)
 	},
 }
 
-func promptModuleSelection(modules []config.ModuleInfo) []string {
+func promptModuleSelection(cfg *config.PactConfig, modules []string) []string {
 	fmt.Printf("Found %d modules in pact.json:\n\n", len(modules))
 
-	// Display modules with numbers
+	// Display modules with numbers and details
 	for i, mod := range modules {
-		itemsStr := ""
-		if len(mod.Items) > 0 {
-			itemsStr = fmt.Sprintf("(%s)", strings.Join(mod.Items, ", "))
-		}
-		fileStr := "file"
-		if mod.FileCount != 1 {
-			fileStr = "files"
-		}
-		fmt.Printf("  [%d] %-12s %d %s %s\n", i+1, mod.Name, mod.FileCount, fileStr, itemsStr)
+		details := getModulePreview(cfg, mod)
+		fmt.Printf("  [%d] %-12s %s\n", i+1, mod, details)
 	}
 
 	fmt.Println()
@@ -149,11 +137,7 @@ func promptModuleSelection(modules []config.ModuleInfo) []string {
 	}
 
 	if input == "a" || input == "all" {
-		var all []string
-		for _, mod := range modules {
-			all = append(all, mod.Name)
-		}
-		return all
+		return modules
 	}
 
 	// Parse comma-separated numbers
@@ -170,8 +154,219 @@ func promptModuleSelection(modules []config.ModuleInfo) []string {
 			fmt.Printf("Warning: %d is out of range, skipping\n", num)
 			continue
 		}
-		selected = append(selected, modules[num-1].Name)
+		selected = append(selected, modules[num-1])
 	}
 
 	return selected
+}
+
+func getModulePreview(cfg *config.PactConfig, module string) string {
+	var parts []string
+
+	switch module {
+	case "shell":
+		if tool := cfg.GetString("shell.prompt.tool"); tool != "" {
+			parts = append(parts, tool)
+		}
+		if tools := cfg.GetStringSlice("shell.tools"); len(tools) > 0 {
+			parts = append(parts, strings.Join(tools, ", "))
+		}
+	case "cli":
+		if tools := cfg.GetStringSlice("cli.tools"); len(tools) > 0 {
+			if len(tools) > 4 {
+				parts = append(parts, strings.Join(tools[:4], ", ")+"...")
+			} else {
+				parts = append(parts, strings.Join(tools, ", "))
+			}
+		}
+	case "git":
+		if user := cfg.GetString("git.user"); user != "" {
+			parts = append(parts, user)
+		}
+	case "editor":
+		if def := cfg.GetString("editor.default"); def != "" {
+			parts = append(parts, def)
+		}
+	case "terminal":
+		if font := cfg.GetString("terminal.font"); font != "" {
+			parts = append(parts, font)
+		}
+	case "llm":
+		if providers := cfg.GetStringSlice("llm.providers"); len(providers) > 0 {
+			parts = append(parts, strings.Join(providers, ", "))
+		}
+	}
+
+	if len(parts) > 0 {
+		return "(" + strings.Join(parts, ", ") + ")"
+	}
+	return ""
+}
+
+func renderApplyResults(results []apply.Result) {
+	if len(results) == 0 {
+		fmt.Println("No actions taken.")
+		return
+	}
+
+	successCount := 0
+	skipCount := 0
+	failCount := 0
+
+	// Group by category
+	installs := []apply.Result{}
+	configs := []apply.Result{}
+	files := []apply.Result{}
+	fonts := []apply.Result{}
+	extensions := []apply.Result{}
+	apps := []apply.Result{}
+
+	for _, r := range results {
+		switch r.Category {
+		case "install":
+			installs = append(installs, r)
+		case "configure":
+			configs = append(configs, r)
+		case "file":
+			files = append(files, r)
+		case "font":
+			fonts = append(fonts, r)
+		case "extension":
+			extensions = append(extensions, r)
+		case "app":
+			apps = append(apps, r)
+		}
+	}
+
+	// Render installs
+	if len(installs) > 0 {
+		fmt.Println("Installations:")
+		for _, r := range installs {
+			icon, status := getResultDisplay(r)
+			fmt.Printf("  %s %-20s %s\n", icon, r.Name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Render configs
+	if len(configs) > 0 {
+		fmt.Println("Configuration:")
+		for _, r := range configs {
+			icon, status := getResultDisplay(r)
+			name := fmt.Sprintf("%s.%s", r.Module, r.Name)
+			fmt.Printf("  %s %-20s %s\n", icon, name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Render files
+	if len(files) > 0 {
+		fmt.Println("Files:")
+		for _, r := range files {
+			icon, status := getResultDisplay(r)
+			name := fmt.Sprintf("%s/%s", r.Module, r.Name)
+			fmt.Printf("  %s %-20s %s\n", icon, name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Render fonts
+	if len(fonts) > 0 {
+		fmt.Println("Fonts:")
+		for _, r := range fonts {
+			icon, status := getResultDisplay(r)
+			fmt.Printf("  %s %-20s %s\n", icon, r.Name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Render extensions
+	if len(extensions) > 0 {
+		fmt.Println("Extensions:")
+		for _, r := range extensions {
+			icon, status := getResultDisplay(r)
+			fmt.Printf("  %s %-20s %s\n", icon, r.Name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Render apps
+	if len(apps) > 0 {
+		fmt.Println("Apps:")
+		for _, r := range apps {
+			icon, status := getResultDisplay(r)
+			fmt.Printf("  %s %-20s %s\n", icon, r.Name, status)
+			if r.Success {
+				if r.Skipped {
+					skipCount++
+				} else {
+					successCount++
+				}
+			} else {
+				failCount++
+			}
+		}
+		fmt.Println()
+	}
+
+	// Summary
+	fmt.Printf("Done: %d applied, %d skipped, %d failed\n", successCount, skipCount, failCount)
+}
+
+func getResultDisplay(r apply.Result) (string, string) {
+	if r.Error != nil {
+		return "✗", r.Error.Error()
+	}
+	if r.Skipped {
+		return "○", r.Message
+	}
+	if r.Success {
+		return "✓", r.Message
+	}
+	return "?", "unknown"
 }

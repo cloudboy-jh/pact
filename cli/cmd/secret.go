@@ -66,13 +66,14 @@ var secretListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if len(cfg.Secrets) == 0 {
+		secrets := cfg.GetSecrets()
+		if len(secrets) == 0 {
 			fmt.Println("No secrets configured in pact.json")
 			return
 		}
 
 		fmt.Println("Secrets:")
-		for _, name := range cfg.Secrets {
+		for _, name := range secrets {
 			if keyring.HasSecret(name) {
 				fmt.Printf("  ● %s (set)\n", name)
 			} else {
