@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/cloudboy-jh/pact/internal/config"
 	"github.com/cloudboy-jh/pact/internal/ui"
@@ -33,6 +35,13 @@ var statusCmd = &cobra.Command{
 }
 
 func runInteractiveStatus(cfg *config.PactConfig) {
+	// Check if we're in a terminal
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		// Non-interactive mode
+		fmt.Println(ui.RenderStatus(cfg))
+		return
+	}
+
 	// Set terminal to raw mode for single key input
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -42,9 +51,8 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-	// Clear screen and render status
-	clearScreen()
-	fmt.Print(ui.RenderStatus(cfg))
+	// Render status (convert \n to \r\n for raw mode)
+	renderStatus(cfg)
 
 	// Read single keys
 	buf := make([]byte, 3)
@@ -59,53 +67,63 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 
 			switch key {
 			case 'q', 'Q', 3: // q, Q, or Ctrl+C
-				clearScreen()
+				// Clear and exit
+				fmt.Print("\033[H\033[2J")
 				return
 			case 's', 'S':
 				// Restore terminal, run sync, then return
 				term.Restore(int(os.Stdin.Fd()), oldState)
-				clearScreen()
+				fmt.Print("\033[H\033[2J")
 				runSync()
 				return
 			case 'e', 'E':
-				// Open editor/web
+				// Open editor
 				term.Restore(int(os.Stdin.Fd()), oldState)
-				clearScreen()
-				openEditor(cfg)
+				fmt.Print("\033[H\033[2J")
+				openEditor()
 				return
 			case 'r', 'R':
 				// Refresh
-				clearScreen()
 				cfg, _ = config.Load()
-				fmt.Print(ui.RenderStatus(cfg))
+				renderStatus(cfg)
 			}
 		}
 	}
 }
 
-func clearScreen() {
+func renderStatus(cfg *config.PactConfig) {
+	// Clear screen
 	fmt.Print("\033[H\033[2J")
+	// Move cursor to top-left
+	fmt.Print("\033[1;1H")
+
+	// Get status and convert newlines for raw mode
+	status := ui.RenderStatus(cfg)
+	lines := strings.Split(status, "\n")
+	for i, line := range lines {
+		fmt.Print(line)
+		if i < len(lines)-1 {
+			fmt.Print("\r\n")
+		}
+	}
 }
 
 func runSync() {
-	// Execute sync command
 	syncCmd.Run(syncCmd, []string{})
 }
 
-func openEditor(cfg *config.PactConfig) {
+func openEditor() {
 	configPath, err := config.GetConfigPath()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
-	// Try to open with default editor
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = os.Getenv("VISUAL")
 	}
 	if editor == "" {
-		// Platform-specific defaults
 		switch runtime.GOOS {
 		case "darwin":
 			editor = "open"
@@ -124,4 +142,10 @@ func openEditor(cfg *config.PactConfig) {
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error opening editor: %v\n", err)
 	}
+}
+
+// waitForKey waits for user to press any key (used in non-raw mode)
+func waitForKey() {
+	reader := bufio.NewReader(os.Stdin)
+	reader.ReadByte()
 }
