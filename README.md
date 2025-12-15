@@ -44,21 +44,30 @@ username/my-pact/
 
 ### Install
 
-**macOS/Linux (Homebrew)**
+**macOS (Homebrew)**
 ```bash
 brew install cloudboy-jh/tap/pact
 ```
 
-**From GitHub Releases**
+**Linux (Homebrew)**
 ```bash
-# Download from https://github.com/cloudboy-jh/pact/releases
+brew install cloudboy-jh/tap/pact
+```
+
+**Windows (Scoop)**
+```powershell
+scoop bucket add pact https://github.com/cloudboy-jh/pact-bucket
+scoop install pact
+```
+
+**Linux/macOS (curl)**
+```bash
+curl -fsSL https://github.com/cloudboy-jh/pact/releases/latest/download/pact_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar -xz -C /usr/local/bin pact
 ```
 
 **From Source**
 ```bash
-cd cli
-go build -o pact .
-sudo mv pact /usr/local/bin/
+cd cli && go build -o pact . && sudo mv pact /usr/local/bin/
 ```
 
 ### Getting Started
