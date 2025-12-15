@@ -66,5 +66,3 @@ scoops:
     homepage: "https://github.com/cloudboy-jh/pact"
     description: "Pact CLI - Sync your dotfiles and configurations"
     license: MIT
-
-
