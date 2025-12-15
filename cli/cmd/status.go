@@ -123,18 +123,34 @@ func openEditor() {
 	if editor == "" {
 		editor = os.Getenv("VISUAL")
 	}
-	if editor == "" {
+
+	var cmd *exec.Cmd
+
+	if editor != "" {
+		// Use user's preferred editor
+		cmd = exec.Command(editor, configPath)
+	} else {
+		// Platform-specific defaults
 		switch runtime.GOOS {
 		case "darwin":
-			editor = "open"
+			// Use open -W to wait for the app to close, -t to open in default text editor
+			cmd = exec.Command("open", "-W", "-t", configPath)
 		case "windows":
-			editor = "notepad"
+			cmd = exec.Command("notepad", configPath)
 		default:
-			editor = "xdg-open"
+			// Try common editors
+			if _, err := exec.LookPath("nano"); err == nil {
+				cmd = exec.Command("nano", configPath)
+			} else if _, err := exec.LookPath("vim"); err == nil {
+				cmd = exec.Command("vim", configPath)
+			} else if _, err := exec.LookPath("vi"); err == nil {
+				cmd = exec.Command("vi", configPath)
+			} else {
+				cmd = exec.Command("xdg-open", configPath)
+			}
 		}
 	}
 
-	cmd := exec.Command(editor, configPath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
