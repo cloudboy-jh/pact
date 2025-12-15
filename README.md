@@ -18,11 +18,13 @@ Setting up a new machine sucks. Dotfiles repos are messy, unstructured, and hard
 
 One `pact.json` manifest + organized files in a GitHub repo. CLI to edit and sync, web UI for visual editing, cross-OS support built in.
 
+**Pact sync doesn't just symlink files — it installs tools, configures your shell, sets up git, downloads fonts, and more.**
+
 ### What's in a Pact
 
 ```
 username/my-pact/
-├── pact.json              # Manifest
+├── pact.json              # Your portable dev identity
 ├── shell/                 # .zshrc, .bashrc, profile.ps1
 ├── editor/                # nvim, vscode, cursor configs
 ├── terminal/              # Ghostty, Kitty, Alacritty
@@ -33,7 +35,6 @@ username/my-pact/
 ├── tools/                 # lazygit, ripgrep, fzf configs
 ├── keybindings/           # Editor keybindings
 ├── snippets/              # Code snippets
-├── fonts/                 # Font preferences
 └── theme/                 # Colors, wallpapers, icons
 ```
 
@@ -68,16 +69,16 @@ cd my-project
 # 1. Initialize (authenticates with GitHub, clones your pact repo to ./.pact/)
 pact init
 
-# 2. Edit your configuration
-pact edit                 # Opens pact.json in your $EDITOR
-pact edit shell           # Edit shell configs
-pact edit web             # Open web editor in browser
+# 2. Sync everything - installs tools, configures shell, git, fonts, etc.
+pact sync all
 
-# 3. Sync configs to your system
-pact sync
+# Or sync specific modules
+pact sync shell    # Install oh-my-posh, zoxide, configure prompt
+pact sync cli      # Install bun, node, lazygit, etc.
+pact sync git      # Configure git user, email, default branch
 
-# 4. Check status
-pact
+# 3. Check status
+pact status
 ```
 
 Pact works like `git` — it creates a `.pact/` folder in your project and walks up the directory tree to find it. Your GitHub token is stored globally in your OS keychain.
@@ -86,47 +87,152 @@ Pact works like `git` — it creates a `.pact/` folder in your project and walks
 
 | Command | Description |
 |---------|-------------|
-| `pact` | Interactive status with quick actions |
+| `pact` | Interactive status with quick actions (s/e/q) |
 | `pact init` | Authenticate with GitHub + setup your pact repo |
+| `pact sync` | Interactive module picker - select which modules to apply |
+| `pact sync all` | Apply everything |
+| `pact sync <module>` | Apply specific module (shell, cli, git, editor, terminal, llm, apps) |
 | `pact edit` | Edit pact.json in $EDITOR |
-| `pact edit <path>` | Edit specific file/module (e.g., `pact edit shell`) |
 | `pact edit web` | Open web editor in browser |
-| `pact sync` | Interactive module picker - select which modules to sync |
-| `pact sync <module>` | Sync a specific module directly (shell, editor, theme, etc.) |
 | `pact push` | Commit and push local changes |
 | `pact status` | Show status (non-interactive) |
 | `pact secret set <name>` | Store a secret in OS keychain |
 | `pact secret list` | List secrets and their status |
-| `pact secret remove <name>` | Remove a secret from keychain |
 | `pact reset` | Remove all symlinks (keeps .pact/) |
 | `pact nuke` | Full cleanup (symlinks + .pact/ + token) |
 
-### Editing Your Pact
+### What `pact sync` Does
 
-**Option 1: Local Editor (CLI)**
+| Module | What Gets Installed/Configured |
+|--------|-------------------------------|
+| `shell` | oh-my-posh/starship, downloads theme, zoxide/fzf, injects init into .zshrc |
+| `cli` | Tools via brew/apt/winget (bun, node, lazygit, etc.) |
+| `git` | Sets user.name, user.email, init.defaultBranch, enables LFS |
+| `editor` | Installs editor, installs VSCode/Cursor extensions |
+| `terminal` | Installs Nerd Fonts automatically |
+| `llm` | Installs Ollama, shows commands to pull local models |
+| `apps` | Installs apps via brew cask/winget (brave, discord, spotify, etc.) |
+
+### Example Sync Output
+
 ```bash
-pact edit                 # Edit pact.json
-pact edit shell/zshrc     # Edit specific file
-pact push                 # Commit and push changes
+$ pact sync all
+
+Pulling latest changes...
+✓ Pulled latest changes
+
+Applying shell...
+Applying cli...
+Applying git...
+Applying terminal...
+
+Installations:
+  ○ bun                  already installed
+  ○ node                 already installed
+  ✓ lazygit              installed
+  ○ oh-my-posh           already installed
+  ✓ zoxide               installed
+
+Configuration:
+  ✓ shell.oh-my-posh-theme downloaded
+  ✓ shell.shell-config   added to .zshrc
+  ✓ git.user.name        cloudboy-jh
+  ✓ git.user.email       you@example.com
+  ✓ git.init.defaultBranch main
+
+Fonts:
+  ○ JetBrainsMono Nerd Font already installed
+
+Done: 6 applied, 8 skipped, 0 failed
 ```
 
-**Option 2: Web Editor**
-```bash
-pact edit web             # Opens browser
-# Make changes in the web UI
-pact sync                 # Pull changes to local
+### pact.json Example
+
+Your config is flexible — add whatever you want:
+
+```json
+{
+  "name": "your-username",
+  "version": "1.0.0",
+
+  "shell": {
+    "prompt": {
+      "tool": "oh-my-posh",
+      "theme": "capr4n",
+      "source": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/capr4n.omp.json"
+    },
+    "tools": ["zoxide", "fzf"]
+  },
+
+  "git": {
+    "user": "your-username",
+    "email": "you@example.com",
+    "defaultBranch": "main",
+    "lfs": true
+  },
+
+  "terminal": {
+    "font": "JetBrainsMono Nerd Font",
+    "fontSize": 14
+  },
+
+  "editor": {
+    "default": "zed",
+    "extensions": ["esbenp.prettier-vscode"]
+  },
+
+  "llm": {
+    "providers": ["claude", "openai"],
+    "local": {
+      "runtime": "ollama",
+      "models": ["qwen-coder", "mistral"]
+    }
+  },
+
+  "cli": {
+    "tools": ["bun", "node", "lazygit", "ripgrep"],
+    "custom": ["pact", "churn"]
+  },
+
+  "apps": {
+    "darwin": {
+      "install": ["brave", "discord", "spotify"]
+    }
+  },
+
+  "secrets": ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+}
 ```
 
-### Syncing Across Machines
+### File Syncing
 
-On a new machine or in a new project:
-```bash
-cd my-project
-pact init                 # Clones your existing pact repo to ./.pact/
-pact sync                 # Applies all configs
+Add `files` entries to any module to sync dotfiles:
+
+```json
+{
+  "shell": {
+    "tools": ["zoxide"],
+    "files": {
+      "zshrc": {
+        "source": "shell/.zshrc",
+        "target": "~/.zshrc"
+      }
+    }
+  }
+}
 ```
 
-Changes sync through GitHub — edit on one machine, pull on another. Each project gets its own `.pact/` folder, all connected to the same `my-pact` repo.
+OS-specific targets:
+
+```json
+{
+  "target": {
+    "darwin": "~/.config/app",
+    "linux": "~/.config/app",
+    "windows": "~/AppData/Local/app"
+  }
+}
+```
 
 ### Secrets
 
@@ -148,74 +254,15 @@ pact secret list
 | Linux | libsecret / gnome-keyring |
 | Windows | Windows Credential Manager |
 
-### pact.json Example
+### Cross-Platform Support
 
-```json
-{
-  "version": "1.0.0",
-  "user": "your-username",
-  "modules": {
-    "shell": {
-      "darwin": {
-        "source": "./shell/darwin.zshrc",
-        "target": "~/.zshrc",
-        "strategy": "symlink"
-      },
-      "windows": {
-        "source": "./shell/windows.ps1",
-        "target": "~/Documents/PowerShell/profile.ps1",
-        "strategy": "copy"
-      }
-    },
-    "editor": {
-      "neovim": {
-        "source": "./editor/nvim/",
-        "target": {
-          "darwin": "~/.config/nvim",
-          "linux": "~/.config/nvim",
-          "windows": "~/AppData/Local/nvim"
-        },
-        "strategy": "symlink"
-      }
-    },
-    "git": {
-      "config": {
-        "source": "./git/.gitconfig",
-        "target": "~/.gitconfig",
-        "strategy": "symlink"
-      }
-    }
-  },
-  "secrets": [
-    "ANTHROPIC_API_KEY",
-    "OPENAI_API_KEY",
-    "GITHUB_TOKEN"
-  ]
-}
-```
+Pact works on macOS, Linux, and Windows with automatic package manager detection:
 
-### Sync Strategies
-
-| Strategy | Behavior | Use when |
-|----------|----------|----------|
-| `symlink` | Creates symlink from target to source | Edits in .pact/ reflect immediately |
-| `copy` | Copies file to target location | App doesn't follow symlinks |
-
-### Cross-OS Support
-
-Each module can have OS-specific configs:
-
-```json
-{
-  "shell": {
-    "darwin": { "source": "./shell/darwin.zshrc", "target": "~/.zshrc" },
-    "linux": { "source": "./shell/linux.zshrc", "target": "~/.zshrc" },
-    "windows": { "source": "./shell/windows.ps1", "target": "~/Documents/PowerShell/profile.ps1" }
-  }
-}
-```
-
-The CLI detects your current OS and applies the right config.
+| OS | Package Managers |
+|----|------------------|
+| macOS | Homebrew |
+| Linux | apt, dnf, pacman, Homebrew |
+| Windows | winget, scoop, chocolatey |
 
 ---
 
@@ -245,35 +292,6 @@ npm run dev
 # Open http://localhost:5173
 ```
 
-For local development, set the CLI to use the local web server:
-```bash
-export PACT_WEB_URL=http://localhost:5173
-```
-
-### GitHub OAuth Setup
-
-1. Go to **GitHub Settings → Developer settings → OAuth Apps → New OAuth App**
-2. Set:
-   - **Application name**: `Pact`
-   - **Homepage URL**: `http://localhost:5173`
-   - **Authorization callback URL**: `http://localhost:5173/auth/callback`
-3. Note your **Client ID** and generate a **Client Secret**
-
-**CLI Configuration** — Edit `cli/internal/auth/oauth.go`:
-```go
-const ClientID = "your-client-id"
-```
-
-**Web Configuration** — Edit `web/src/lib/github.ts`:
-```ts
-export const GITHUB_CLIENT_ID = 'your-client-id';
-```
-
-Set environment variable:
-```bash
-export GITHUB_CLIENT_SECRET=your-client-secret
-```
-
 ### Project Structure
 
 ```
@@ -281,12 +299,13 @@ pact/
 ├── cli/                    # Go CLI
 │   ├── cmd/                # Cobra commands
 │   ├── internal/
+│   │   ├── apply/          # Tool installation & config logic
 │   │   ├── auth/           # GitHub OAuth device flow
 │   │   ├── config/         # pact.json parsing
 │   │   ├── git/            # Git operations
 │   │   ├── keyring/        # OS keychain
 │   │   ├── sync/           # Symlink/copy logic
-│   │   └── ui/             # TUI (Lip Gloss + Bubbletea)
+│   │   └── ui/             # TUI (Lip Gloss)
 │   ├── go.mod
 │   └── main.go
 │
@@ -296,10 +315,6 @@ pact/
     │   │   ├── github.ts   # GitHub API client
     │   │   └── stores/     # Auth state
     │   └── routes/
-    │       ├── +page.svelte           # Landing
-    │       ├── dashboard/             # Dashboard
-    │       ├── editor/[module]/       # File editor
-    │       └── auth/callback/         # OAuth callback
     ├── package.json
     └── svelte.config.js
 ```
@@ -308,7 +323,7 @@ pact/
 
 | Layer | Tech |
 |-------|------|
-| CLI | Go, Cobra, Bubbletea, Lip Gloss |
+| CLI | Go, Cobra, Lip Gloss |
 | CLI Git | go-git |
 | CLI Secrets | go-keyring |
 | Web | SvelteKit, Tailwind CSS |
@@ -320,21 +335,22 @@ pact/
 ## Design Principles
 
 1. **GitHub is the database** — No separate backend, your repo is the source of truth
-2. **Edit anywhere** — Local editor or web UI, your choice
-3. **Cross-OS by default** — Darwin, Windows, Linux configs coexist
+2. **Actually apply configs** — Not just symlinks, but installs tools and configures apps
+3. **Cross-OS by default** — Darwin, Windows, Linux support built in
 4. **Secrets stay local** — API keys in OS keychain, never in repo
-5. **Files not strings** — Configs as files, not inline JSON
+5. **Flexible config** — Your pact.json, your structure
 
 ---
 
 ## Releases
 
-Releases are automatic on every push to `master` that changes CLI code. Version is auto-bumped (patch).
+Releases are automatic on every push to `master` that changes CLI code.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| v0.1.x | Dec 2025 | Interactive sync, theme module, local .pact/ |
-| v0.1.0 | Dec 2025 | Initial release with Homebrew support |
+| v0.2.x | Dec 2024 | Full apply system - installs tools, fonts, apps, configures shell/git |
+| v0.1.x | Dec 2024 | Interactive sync, theme module, local .pact/ |
+| v0.1.0 | Dec 2024 | Initial release with Homebrew support |
 
 ---
 
