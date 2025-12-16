@@ -2,9 +2,29 @@
   <img src="Pact-readme-logo.png" alt="Pact Logo" width="400" />
 </p>
 
-# Pact
+<p align="center">
+  <strong>Your portable dev identity. Shell, editor, AI prefs, themes — one kit, any machine.</strong>
+</p>
 
-> Your portable dev identity. Shell, editor, AI prefs, themes — one kit, any machine.
+<p align="center">
+  <a href="https://pact-docs.pages.dev/">
+    <img src="https://img.shields.io/badge/Docs-pact--docs-10b981?style=flat-square" alt="Docs" />
+  </a>
+  <a href="https://github.com/cloudboy-jh/pact/commits/master">
+    <img src="https://img.shields.io/github/last-commit/cloudboy-jh/pact?style=flat-square&color=10b981" alt="GitHub last commit" />
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-10b981.svg?style=flat-square" alt="License: MIT" />
+  </a>
+  <a href="https://go.dev/">
+    <img src="https://img.shields.io/badge/Made%20with-Go-10b981?style=flat-square&logo=go" alt="Made with Go" />
+  </a>
+  <a href="https://github.com/cloudboy-jh/pact/pulls">
+    <img src="https://img.shields.io/badge/PRs-welcome-10b981.svg?style=flat-square" alt="PRs Welcome" />
+  </a>
+</p>
+
+---
 
 Pact stores your entire development environment configuration in a single GitHub repo. Edit locally or in the browser, sync from terminal, apply anywhere.
 
