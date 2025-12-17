@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultWebURL = "https://pact-ckn.pages.dev"
+const defaultWebURL = "https://pact-dev.com"
 
 func getWebURL() string {
 	if url := os.Getenv("PACT_WEB_URL"); url != "" {
