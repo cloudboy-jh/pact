@@ -27,7 +27,8 @@
 		Shapes,
 		FileCode,
 		FolderDot,
-		ScrollText
+		ScrollText,
+		MoreHorizontal
 	} from 'lucide-svelte';
 
 	let pactConfig: PactConfig | null = null;
@@ -37,6 +38,7 @@
 	// Dropdown state
 	let aiExpanded = false;
 	let ricingExpanded = false;
+	let miscExpanded = false;
 
 	// Top-level modules - support both old (cli-tools) and new (cli) formats
 	const topLevelModules = [
@@ -45,9 +47,13 @@
 		{ id: 'terminal', icon: Terminal, description: 'Terminal emulator', altIds: [] },
 		{ id: 'git', icon: Github, description: 'Git configuration', altIds: [] },
 		{ id: 'cli', icon: FileCode, description: 'CLI tool configs', altIds: ['cli-tools'] },
-		{ id: 'scripts', icon: ScrollText, description: 'Personal utility scripts', altIds: [] },
-		{ id: 'dotfiles', icon: FolderDot, description: 'Misc dotfiles', altIds: [] },
 		{ id: 'apps', icon: Cpu, description: 'Application shortcuts', altIds: [] }
+	];
+
+	// Misc dropdown sub-items
+	const miscSubItems = [
+		{ id: 'scripts', label: 'Scripts', icon: ScrollText, description: 'Personal utility scripts', altIds: [] },
+		{ id: 'dotfiles', label: 'Dotfiles', icon: FolderDot, description: 'Misc dotfiles', altIds: [] }
 	];
 
 	// AI/LLM dropdown sub-items - support both ai.* and llm.* formats
@@ -193,6 +199,10 @@
 
 	function toggleRicing() {
 		ricingExpanded = !ricingExpanded;
+	}
+
+	function toggleMisc() {
+		miscExpanded = !miscExpanded;
 	}
 </script>
 
@@ -411,6 +421,72 @@
 							{#if ricingExpanded}
 								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
 									{#each ricingSubItems as item}
+										{@const status = getModuleStatus(item.id, item.altIds)}
+										{@const StatusIcon = getStatusIcon(status)}
+										<button
+											on:click={() => navigateToEditor(item.id)}
+											class="w-full group flex items-center justify-between p-3 pl-8 hover:bg-zinc-900/60 transition-all text-left border-b border-zinc-800/30 last:border-b-0"
+										>
+											<div class="flex items-center gap-3">
+												<div
+													class="w-8 h-8 bg-zinc-800/50 rounded-lg flex items-center justify-center group-hover:bg-zinc-700/50 transition-colors"
+												>
+													<svelte:component this={item.icon} size={14} class="text-zinc-500" />
+												</div>
+												<div>
+													<span class="text-sm font-medium text-zinc-300">{item.label}</span>
+													<p class="text-xs text-zinc-600">{item.description}</p>
+												</div>
+											</div>
+
+											<div class="flex items-center gap-3">
+												<span class="flex items-center gap-1.5 text-xs {getStatusColor(status)}">
+													{#if StatusIcon}
+														<svelte:component this={StatusIcon} size={10} />
+													{/if}
+													{getStatusText(status)}
+												</span>
+												<ChevronRight
+													size={14}
+													class="text-zinc-700 group-hover:text-zinc-500 transition-colors"
+												/>
+											</div>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+
+						<!-- Misc Dropdown -->
+						<div class="rounded-xl border border-zinc-800/50 overflow-hidden">
+							<button
+								on:click={toggleMisc}
+								class="w-full group flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-900/60 transition-all text-left"
+							>
+								<div class="flex items-center gap-4">
+									<div
+										class="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center group-hover:bg-zinc-700 transition-colors"
+									>
+										<MoreHorizontal size={18} class="text-zinc-400" />
+									</div>
+									<div>
+										<span class="font-medium">Misc</span>
+										<p class="text-sm text-zinc-500">Scripts, dotfiles</p>
+									</div>
+								</div>
+
+								<div class="flex items-center gap-3">
+									{#if miscExpanded}
+										<ChevronDown size={16} class="text-zinc-500" />
+									{:else}
+										<ChevronRight size={16} class="text-zinc-500" />
+									{/if}
+								</div>
+							</button>
+
+							{#if miscExpanded}
+								<div class="border-t border-zinc-800/50 bg-zinc-950/50">
+									{#each miscSubItems as item}
 										{@const status = getModuleStatus(item.id, item.altIds)}
 										{@const StatusIcon = getStatusIcon(status)}
 										<button
