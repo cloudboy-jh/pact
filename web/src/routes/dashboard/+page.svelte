@@ -17,6 +17,7 @@
 		LogOut,
 		Github,
 		Sparkles,
+		Edit,
 		Bot,
 		Server,
 		Paintbrush,
@@ -252,15 +253,25 @@
 			</div>
 		{:else}
 			<!-- Status bar -->
-			<div class="flex items-center gap-6 mb-8 p-4 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
-				<div class="flex items-center gap-2">
-					<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-					<span class="text-sm text-zinc-400">Connected</span>
+			<div class="flex items-center justify-between mb-8 p-4 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
+				<div class="flex items-center gap-6">
+					<div class="flex items-center gap-2">
+						<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+						<span class="text-sm text-zinc-400">Connected</span>
+					</div>
+					<div class="h-4 w-px bg-zinc-800"></div>
+					<span class="text-sm text-zinc-500">
+						Version: <span class="text-zinc-300">{pactConfig?.version || '1.0.0'}</span>
+					</span>
 				</div>
-				<div class="h-4 w-px bg-zinc-800"></div>
-				<span class="text-sm text-zinc-500">
-					Version: <span class="text-zinc-300">{pactConfig?.version || '1.0.0'}</span>
-				</span>
+				<button
+					on:click={() => goto('/editor')}
+					class="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-all"
+				>
+					<Edit size={14} />
+					<span>Edit Config</span>
+					<ChevronRight size={14} />
+				</button>
 			</div>
 
 			<div class="grid grid-cols-3 gap-6">

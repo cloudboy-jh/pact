@@ -287,7 +287,7 @@ import {
 			try {
 				const parsed = JSON.parse(currentContent);
 				if (parsed.modules) {
-					pactSections = Object.keys(parsed.modules);
+					pactSections = Object.keys(parsed.modules).map(key => ({ id: key, label: key }));
 				}
 			} catch {
 				// Invalid JSON during editing, keep old sections
@@ -422,22 +422,24 @@ The pact.json structure uses:
 When suggesting changes, please provide the updated JSON that I can copy back into my pact.json file.`;
 	}
 
-	function openInLlm(provider: typeof llmProviders[0]) {
+	async function openInLlm(provider: typeof llmProviders[0]) {
 		const prompt = generateLlmPrompt();
 		
-		// Copy prompt to clipboard
-		navigator.clipboard.writeText(prompt).then(() => {
-			// Show toast
-			toastMessage = `Copied to clipboard! Paste in ${provider.name}`;
+		// Open the URL first (must be synchronous with user action to avoid popup blocker)
+		const newWindow = window.open(provider.url, '_blank');
+		
+		// Then copy prompt to clipboard
+		try {
+			await navigator.clipboard.writeText(prompt);
+			toastMessage = `Prompt copied! Paste it in ${provider.name} (Ctrl+V / Cmd+V)`;
+			showToast = true;
+			setTimeout(() => { showToast = false; }, 4000);
+		} catch {
+			// Clipboard failed - show manual copy option
+			toastMessage = `Opened ${provider.name} - copy prompt manually`;
 			showToast = true;
 			setTimeout(() => { showToast = false; }, 3000);
-			
-			// Open the LLM in a new tab
-			window.open(provider.url, '_blank');
-		}).catch(() => {
-			// If clipboard fails, still open the URL
-			window.open(provider.url, '_blank');
-		});
+		}
 		
 		showLlmDropdown = false;
 	}
