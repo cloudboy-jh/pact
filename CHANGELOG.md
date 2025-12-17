@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2024-12-17
+
+### Added
+- **Scrollable module list** - Status view now paginates when content exceeds terminal height
+  - Arrow keys or `j`/`k` (vim-style) to scroll
+  - Shows "... N more above/below" indicators when scrolled
+- **Editor choice prompt** - Pressing `e` now prompts for web or local editor if not configured
+  - Option to open web editor at pact-dev.com
+  - Option to use local editor (respects `EDITOR`/`VISUAL` env vars, falls back to OS defaults)
+  - Supports custom editor via `editor.default` in pact.json (e.g., `"web"`, `"local"`, `"code"`, `"vim"`)
+
+### Changed
+- Help bar now shows `[r] refresh` option
+- Terminal dimensions are now detected for proper pagination
+
+### Fixed
+- Module list no longer scrolls infinitely without bounds
+- Editor action now properly falls back based on OS (notepad on Windows, open -t on macOS, nano/vim on Linux)
+
 ## [0.2.0] - 2024-12-14
 
 ### Added

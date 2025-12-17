@@ -143,8 +143,30 @@ func getModuleDetails(cfg *config.PactConfig, module string) string {
 	return ""
 }
 
-// RenderStatus renders the status box
-func RenderStatus(cfg *config.PactConfig) string {
+// GetMaxScroll calculates the maximum scroll offset based on content and terminal height
+func GetMaxScroll(cfg *config.PactConfig, termHeight int) int {
+	statuses := GetModuleStatuses(cfg)
+	secrets := cfg.GetSecrets()
+
+	// Calculate total content lines (header=2, modules, optional secrets line + blank, help=1, box borders=2)
+	totalLines := 2 + len(statuses) + 2 + 1 // header + modules + box borders + help
+	if len(secrets) > 0 {
+		totalLines += 2 // blank line + secrets line
+	}
+
+	// Available height for content (subtract some for box borders and help)
+	availableHeight := termHeight - 4
+
+	if totalLines <= availableHeight {
+		return 0
+	}
+	return totalLines - availableHeight
+}
+
+// RenderStatus renders the status box with optional scrolling
+// scrollOffset: how many lines to skip from the top of the module list
+// termHeight: terminal height for pagination (0 = no pagination)
+func RenderStatus(cfg *config.PactConfig, scrollOffset int, termHeight int) string {
 	var sb strings.Builder
 
 	// Header
@@ -167,10 +189,43 @@ func RenderStatus(cfg *config.PactConfig) string {
 		sb.WriteString(dimStyle.Render("No modules configured"))
 		sb.WriteString("\n")
 	} else {
-		for _, status := range statuses {
-			line := renderModuleLine(status)
-			sb.WriteString(line)
-			sb.WriteString("\n")
+		// Calculate how many modules we can display
+		// Reserve lines for: header(2) + box borders(2) + secrets(2) + help(1) + scroll indicators(2)
+		reservedLines := 9
+		maxVisible := termHeight - reservedLines
+		if termHeight == 0 || maxVisible <= 0 || maxVisible >= len(statuses) {
+			// No pagination needed - show all
+			for _, status := range statuses {
+				line := renderModuleLine(status)
+				sb.WriteString(line)
+				sb.WriteString("\n")
+			}
+		} else {
+			// Pagination active
+			endIndex := scrollOffset + maxVisible
+			if endIndex > len(statuses) {
+				endIndex = len(statuses)
+			}
+
+			// Show scroll up indicator if not at top
+			if scrollOffset > 0 {
+				sb.WriteString(dimStyle.Render(fmt.Sprintf("  ... %d more above (k/up to scroll)", scrollOffset)))
+				sb.WriteString("\n")
+			}
+
+			// Render visible modules
+			for i := scrollOffset; i < endIndex; i++ {
+				line := renderModuleLine(statuses[i])
+				sb.WriteString(line)
+				sb.WriteString("\n")
+			}
+
+			// Show scroll down indicator if not at bottom
+			remaining := len(statuses) - endIndex
+			if remaining > 0 {
+				sb.WriteString(dimStyle.Render(fmt.Sprintf("  ... %d more below (j/down to scroll)", remaining)))
+				sb.WriteString("\n")
+			}
 		}
 	}
 
@@ -185,8 +240,8 @@ func RenderStatus(cfg *config.PactConfig) string {
 	content := sb.String()
 	box := boxStyle.Render(content)
 
-	// Help line
-	help := helpStyle.Render("[s] sync  [e] edit  [q] quit")
+	// Help line (updated with scroll hint)
+	help := helpStyle.Render("[s] sync  [e] edit  [r] refresh  [q] quit")
 
 	return box + "\n" + help
 }

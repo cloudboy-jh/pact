@@ -149,5 +149,5 @@ func (m model) View() string {
 		return "Loading...\n"
 	}
 
-	return ui.RenderStatus(m.cfg)
+	return ui.RenderStatus(m.cfg, 0, 0)
 }
