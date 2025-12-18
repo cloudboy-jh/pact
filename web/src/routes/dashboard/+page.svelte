@@ -79,8 +79,6 @@
 		if (initialized) return;
 		initialized = true;
 
-		await auth.initialize();
-		
 		if (!$isAuthenticated) {
 			goto('/');
 			return;

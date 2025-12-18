@@ -18,7 +18,7 @@ function createAuthStore() {
 	const initialState: AuthState = {
 		token: browser ? localStorage.getItem('github_token') : null,
 		user: browser ? JSON.parse(localStorage.getItem('github_user') || 'null') : null,
-		loading: false
+		loading: browser ? true : false
 	};
 
 	const { subscribe, set, update } = writable<AuthState>(initialState);

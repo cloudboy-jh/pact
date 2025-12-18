@@ -76,8 +76,6 @@
 	};
 
 	onMount(async () => {
-		await auth.initialize();
-
 		if (!$isAuthenticated) {
 			goto('/');
 			return;

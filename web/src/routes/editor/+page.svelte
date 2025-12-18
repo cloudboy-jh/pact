@@ -76,8 +76,6 @@ import {
 	let editorComponent: CodeEditor;
 
 	onMount(async () => {
-		await auth.initialize();
-
 		if (!$isAuthenticated) {
 			goto('/');
 			return;

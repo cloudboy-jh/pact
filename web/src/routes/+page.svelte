@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth, isAuthenticated } from '$lib/stores/auth';
+	import { isAuthenticated } from '$lib/stores/auth';
 	import { getAuthUrl } from '$lib/github';
 	import { FolderGit2, Github, Terminal, Cpu, Palette, Key } from 'lucide-svelte';
 
-	onMount(async () => {
-		await auth.initialize();
+	onMount(() => {
 		if ($isAuthenticated) {
 			goto('/dashboard');
 		}
