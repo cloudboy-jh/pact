@@ -325,6 +325,55 @@ Complete removal of pact (symlinks + `~/.pact/` + token).
 
 ---
 
+### 10. Read Command (`pact read`)
+
+**File:** `/cli/cmd/read.go`
+
+Scan local development environment and import detected tools, configs, and settings into pact.json. This is the reverse of `pact sync`.
+
+**Arguments:**
+| Arg | Description |
+|-----|-------------|
+| `[modules...]` | Optional specific modules to scan (e.g., `shell git editor`) |
+
+**Flags:**
+| Flag | Type | Description |
+|------|------|-------------|
+| `--diff` | bool | Only show differences from pact.json |
+| `--json` | bool | Output detected config as JSON |
+| `-y, --yes` | bool | Import all detected items without prompting |
+| `--dry-run` | bool | Preview changes without modifying anything |
+
+**Flow:**
+1. Check if pact is initialized
+2. If not initialized, prompt to connect GitHub and create repo
+3. Scan environment using `detect.Scan()`
+4. Load existing pact.json (if exists)
+5. Compare detected config with existing using `detect.Compare()`
+6. If `--json`: output JSON and exit
+7. If `--diff`: render diff and exit
+8. Show detected config with diff markers
+9. If `--yes`: import all local-only items
+10. Else: run hierarchical TUI picker for selection
+11. If `--dry-run`: show what would be imported and exit
+12. Apply selected imports using `detect.Merge()`
+13. Copy config files to `.pact/`
+14. Store secrets in OS keychain
+
+**What Gets Detected:**
+| Category | Detection |
+|----------|-----------|
+| CLI Tools | Known tools in PATH (node, bun, go, git, lazygit, etc.) |
+| Shell Prompt | oh-my-posh, starship with theme parsing |
+| Shell Tools | zoxide, fzf, direnv, nvm, rbenv, pyenv |
+| Git Config | user.name, user.email, defaultBranch, LFS |
+| Editors | zed, cursor, vscode, nvim, vim via PATH and $EDITOR |
+| LLM | API key env vars, ollama models, coding agents |
+| Secrets | Regex-based env var scanning for API keys/tokens |
+| Config Files | .zshrc, .gitconfig, nvim/, vscode settings, etc. |
+
+---
+
 ## Internal Packages
 
 ### 1. Config Package (`internal/config/pact.go`)
@@ -627,7 +676,80 @@ type Result struct {
 
 ---
 
-### 6. UI Package (`internal/ui/status.go`)
+### 6. Detect Package (`internal/detect/`)
+
+Environment detection for `pact read` command.
+
+#### Files
+| File | Purpose |
+|------|---------|
+| `detect.go` | Main orchestrator, `DetectedConfig` struct, `Scan()` function |
+| `tools.go` | CLI tool detection via `exec.LookPath()` |
+| `shell.go` | Shell prompt and tools detection |
+| `git.go` | Git config detection via `git config --global` |
+| `editor.go` | Editor detection via PATH and `$EDITOR` |
+| `llm.go` | Ollama, API key, and coding agent detection |
+| `secrets.go` | Regex-based environment variable scanning |
+| `configs.go` | Config file discovery and copying |
+| `diff.go` | Compare detected config vs existing pact.json |
+| `merge.go` | Merge user selections into pact.json |
+| `platform_darwin.go` | macOS-specific detection (Homebrew) |
+| `platform_linux.go` | Linux-specific detection (apt/dnf/pacman) |
+| `platform_windows.go` | Windows-specific detection (winget/scoop/choco) |
+
+#### Data Structures
+```go
+// DetectedConfig holds everything found on the machine
+type DetectedConfig struct {
+    CLI         CLIDetected      `json:"cli,omitempty"`
+    Shell       ShellDetected    `json:"shell,omitempty"`
+    Git         GitDetected      `json:"git,omitempty"`
+    Editor      EditorDetected   `json:"editor,omitempty"`
+    Terminal    TerminalDetected `json:"terminal,omitempty"`
+    LLM         LLMDetected      `json:"llm,omitempty"`
+    Secrets     []SecretDetected `json:"secrets,omitempty"`
+    ConfigFiles []ConfigFile     `json:"configFiles,omitempty"`
+}
+
+// DiffResult shows differences for a module
+type DiffResult struct {
+    Module    string     `json:"module"`
+    LocalOnly []DiffItem `json:"localOnly"` // Detected but not in pact.json
+    PactOnly  []DiffItem `json:"pactOnly"`  // In pact.json but not detected
+    Synced    []DiffItem `json:"synced"`    // Present in both
+}
+
+// ImportSelection represents what the user wants to import
+type ImportSelection struct {
+    CLITools     []string
+    CLICustom    []string
+    ShellPrompt  *PromptInfo
+    ShellTools   []string
+    Git          *GitDetected
+    Editor       string
+    LLMProviders []string
+    LLMRuntime   string
+    LLMModels    []string
+    LLMAgents    []string
+    Secrets      []string
+    ConfigFiles  []ConfigFile
+}
+```
+
+#### Key Functions
+| Function | Purpose |
+|----------|---------|
+| `Scan(opts)` | Performs full environment scan |
+| `Compare(detected, cfg)` | Compares detected vs existing pact.json |
+| `Merge(selection, pactDir)` | Applies import selection to pact.json |
+| `BuildSelectionFromDiffs(selected, detected)` | Converts TUI selections to ImportSelection |
+| `CopyConfigFile(cf, pactDir)` | Copies a config file to .pact/ |
+| `DiscoverConfigFiles()` | Finds config files on the system |
+| `DetectSecrets(existing)` | Scans env vars for secrets |
+
+---
+
+### 7. UI Package (`internal/ui/status.go`)
 
 TUI rendering using Lip Gloss.
 

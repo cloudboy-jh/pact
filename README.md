@@ -98,7 +98,10 @@ cd my-project
 # 1. Initialize (authenticates with GitHub, clones your pact repo to ./.pact/)
 pact init
 
-# 2. Sync everything - installs tools, configures shell, git, fonts, etc.
+# 2. Bootstrap from existing setup (optional - imports your current environment)
+pact read
+
+# 3. Sync everything - installs tools, configures shell, git, fonts, etc.
 pact sync all
 
 # Or sync specific modules
@@ -106,7 +109,7 @@ pact sync shell    # Install oh-my-posh, zoxide, configure prompt
 pact sync cli      # Install bun, node, lazygit, etc.
 pact sync git      # Configure git user, email, default branch
 
-# 3. Check status
+# 4. Check status
 pact status
 ```
 
@@ -121,6 +124,9 @@ Pact works like `git` — it creates a `.pact/` folder in your project and walks
 | `pact sync` | Interactive module picker - select which modules to apply |
 | `pact sync all` | Apply everything |
 | `pact sync <module>` | Apply specific module (shell, cli, git, editor, terminal, llm, apps) |
+| `pact read` | Scan local environment and import to pact.json |
+| `pact read --diff` | Show drift between local machine and pact.json |
+| `pact read --json` | Output detected config as JSON |
 | `pact edit` | Edit pact.json in $EDITOR |
 | `pact edit web` | Open web editor in browser |
 | `pact push` | Commit and push local changes |
@@ -129,6 +135,50 @@ Pact works like `git` — it creates a `.pact/` folder in your project and walks
 | `pact secret list` | List secrets and their status |
 | `pact reset` | Remove all symlinks (keeps .pact/) |
 | `pact nuke` | Full cleanup (symlinks + .pact/ + token) |
+
+### Reverse Sync with `pact read`
+
+Import your existing development environment into pact:
+
+```bash
+# Scan and show what can be imported
+pact read
+
+# Show drift between local machine and pact.json
+pact read --diff
+
+# Import everything without prompts
+pact read -y
+
+# Output as JSON for scripting
+pact read --json
+
+# Only scan specific modules
+pact read shell git
+```
+
+**What gets detected:**
+- CLI tools (node, bun, go, git, gh, lazygit, ripgrep, etc.)
+- Shell prompt (oh-my-posh, starship) with theme
+- Git config (user, email, defaultBranch, LFS)
+- Editors (zed, cursor, vscode, nvim)
+- LLM providers (API keys), ollama models, coding agents
+- Config files (.zshrc, .gitconfig, nvim/, vscode settings, etc.)
+
+**Example output:**
+```
+  cli
+    ● node  ✓
+    ● bun  ✓
+    ○ ripgrep ← LOCAL ONLY
+    ✗ deno ← PACT ONLY (not installed)
+
+  shell
+    ● oh-my-posh (capr4n) ✓
+    ○ ~/.zshrc ← config file not tracked
+
+Legend: ● synced  ○ can import  ✗ missing locally
+```
 
 ### What `pact sync` Does
 
@@ -331,6 +381,7 @@ pact/
 │   │   ├── apply/          # Tool installation & config logic
 │   │   ├── auth/           # GitHub OAuth device flow
 │   │   ├── config/         # pact.json parsing
+│   │   ├── detect/         # Environment detection (pact read)
 │   │   ├── git/            # Git operations
 │   │   ├── keyring/        # OS keychain
 │   │   ├── sync/           # Symlink/copy logic
@@ -377,6 +428,7 @@ Releases are automatic on every push to `master` that changes CLI code.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| v0.3.x | Dec 2025 | `pact read` - reverse sync, environment detection, config file import |
 | v0.2.x | Dec 2025 | Full apply system - installs tools, fonts, apps, configures shell/git |
 | v0.1.x | Dec 2025 | Interactive sync, theme module, local .pact/ |
 | v0.1.0 | Dec 2025 | Initial release with Homebrew support |
