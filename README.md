@@ -82,7 +82,7 @@ scoop install pact
 
 **Linux/macOS (curl)**
 ```bash
-curl -fsSL https://github.com/cloudboy-jh/pact/releases/latest/download/pact_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar -xz -C /usr/local/bin pact
+curl -fsSL https://raw.githubusercontent.com/cloudboy-jh/pact/master/install.sh | sh
 ```
 
 **From Source**
