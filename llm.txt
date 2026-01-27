@@ -1,0 +1,85 @@
+# Pact
+
+Pact is a portable dev environment manager. This project uses Pact for environment configuration.
+
+## Quick Reference
+
+```bash
+pact status          # Check current state
+pact sync all        # Apply all environment configs
+pact sync <module>   # Apply specific module (shell, cli, git, editor, terminal, llm, apps)
+pact edit            # Edit pact.json
+pact push            # Commit and push changes
+```
+
+## What Pact Does
+
+Pact reads `pact.json` and:
+- Installs CLI tools (bun, node, lazygit, ripgrep, etc.)
+- Configures shell (oh-my-posh/starship, zoxide, fzf)
+- Sets up git (user, email, default branch, LFS)
+- Installs editor extensions
+- Downloads and installs Nerd Fonts
+- Manages secrets via OS keychain (never in repo)
+
+## Project Structure
+
+The `.pact/` directory contains the cloned pact repo:
+
+```
+.pact/
+├── pact.json              # Main config manifest
+├── shell/                 # Shell configs (.zshrc, .bashrc)
+├── editor/                # Editor configs (nvim, vscode, cursor)
+├── git/                   # Git configs
+├── prompts/               # AI prompts
+├── agents/                # CLAUDE.md, .cursorrules
+└── ...
+```
+
+## Common Tasks
+
+### Check environment status
+```bash
+pact status
+```
+
+### Sync after pulling changes
+```bash
+pact sync all
+```
+
+### Add a new CLI tool
+Edit `pact.json`, add to `cli.tools` array, then `pact sync cli`
+
+### Add a secret
+```bash
+pact secret set SECRET_NAME
+pact secret list
+```
+
+### Update configs
+```bash
+pact edit        # Opens pact.json in $EDITOR
+pact push        # Commits and pushes changes
+```
+
+## pact.json Structure
+
+Key sections:
+- `shell` - Prompt tool, theme, shell utilities
+- `cli` - Tools to install via package manager
+- `git` - Git configuration
+- `editor` - Default editor and extensions
+- `terminal` - Font and terminal settings
+- `llm` - AI providers and local models
+- `apps` - GUI applications to install
+- `secrets` - List of secrets (stored in OS keychain)
+
+## Notes for AI Agents
+
+- Pact configs are in `.pact/` directory
+- The `pact.json` file is the source of truth
+- Secrets are in OS keychain, not in files — use `pact secret list` to check status
+- Cross-platform: configs can have OS-specific targets (`darwin`, `linux`, `windows`)
+- Don't edit symlinked files directly — edit sources in `.pact/` then `pact sync`
