@@ -1,4 +1,4 @@
-# Pact Documentation
+git # Pact Documentation
 
 > Your portable dev identity. Shell, editor, AI prefs, themes — one kit, any machine.
 
