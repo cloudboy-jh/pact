@@ -45,6 +45,11 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 		height = 24 // Fallback default
 	}
 
+	// Validate terminal height - use sane minimum
+	if height < 10 {
+		height = 24
+	}
+
 	// Set terminal to raw mode for single key input
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -60,7 +65,7 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 	renderStatus(cfg, scrollOffset, height)
 
 	// Read single keys - use larger buffer for mouse/escape sequences
-	buf := make([]byte, 16)
+	buf := make([]byte, 32)
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {

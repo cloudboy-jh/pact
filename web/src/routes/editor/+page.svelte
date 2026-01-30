@@ -38,8 +38,11 @@ import {
 	// State
 	let loading = true;
 	let saving = false;
-	let saveStatus: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
+	let saveStatus: 'idle' | 'saving' | 'saved' | 'error' | 'unsaved' = 'idle';
 	let error = '';
+
+	// Push confirmation
+	let showPushConfirmation = false;
 
 	// File tree
 	let repoFiles: GitHubFile[] = [];
@@ -292,12 +295,12 @@ import {
 			}
 		}
 
-		// Auto-save with debounce
+		// Mark as unsaved (user must explicitly push to GitHub)
 		if (saveTimeout) {
 			clearTimeout(saveTimeout);
 		}
 		saveTimeout = setTimeout(() => {
-			saveFile();
+			saveStatus = 'unsaved';
 		}, 1500);
 	}
 
@@ -554,16 +557,21 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 				{#if saveStatus === 'saving'}
 					<div class="flex items-center gap-2 text-sm text-zinc-400">
 						<Loader2 size={14} class="animate-spin" />
-						<span>Saving...</span>
+						<span>Pushing...</span>
 					</div>
 				{:else if saveStatus === 'saved'}
 					<div class="flex items-center gap-2 text-sm text-emerald-400">
 						<Check size={14} />
-						<span>Saved</span>
+						<span>Pushed</span>
+					</div>
+				{:else if saveStatus === 'unsaved'}
+					<div class="flex items-center gap-2 text-sm text-amber-400">
+						<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+						<span>Unsaved changes</span>
 					</div>
 				{:else if saveStatus === 'error'}
 					<div class="flex items-center gap-2 text-sm text-red-400">
-						<span>Save failed</span>
+						<span>Push failed</span>
 					</div>
 				{/if}
 
@@ -729,9 +737,35 @@ When suggesting changes, please provide the updated JSON that I can copy back in
 
 				<!-- Action buttons -->
 				<div class="p-2 border-t border-zinc-800 space-y-2">
+					<!-- Push Confirmation -->
+					{#if showPushConfirmation}
+						<div class="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+							<p class="text-xs text-zinc-300">Push changes to GitHub?</p>
+							<div class="flex gap-2">
+								<button
+									on:click={() => {
+										showPushConfirmation = false;
+										saveFile();
+									}}
+									class="flex-1 px-3 py-1.5 text-xs bg-emerald-500 text-zinc-950 font-medium rounded hover:bg-emerald-400 transition-colors"
+								>
+									Push
+								</button>
+								<button
+									on:click={() => {
+										showPushConfirmation = false;
+									}}
+									class="flex-1 px-3 py-1.5 text-xs bg-zinc-700 text-zinc-300 rounded hover:bg-zinc-600 transition-colors"
+								>
+									Cancel
+								</button>
+							</div>
+						</div>
+					{/if}
+
 					<!-- Push to GitHub -->
 					<button
-						on:click={saveFile}
+						on:click={() => showPushConfirmation = true}
 						disabled={saving || saveStatus === 'saving'}
 						class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 hover:border-zinc-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 					>

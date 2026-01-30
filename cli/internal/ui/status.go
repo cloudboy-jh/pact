@@ -148,15 +148,25 @@ func GetMaxScroll(cfg *config.PactConfig, termHeight int) int {
 	statuses := GetModuleStatuses(cfg)
 	secrets := cfg.GetSecrets()
 
+	// Handle edge cases
+	if termHeight <= 0 {
+		return 0
+	}
+
 	// Calculate total content lines (header=2, modules, optional secrets line + blank, help=1, box borders=2)
 	totalLines := 2 + len(statuses) + 2 + 1 // header + modules + box borders + help
 	if len(secrets) > 0 {
 		totalLines += 2 // blank line + secrets line
 	}
 
-	// Available height for content (subtract some for box borders and help)
-	availableHeight := termHeight - 4
+	// Available height for content (must match reservedLines in RenderStatus)
+	// Reserve lines for: header(2) + box borders(2) + secrets(2) + help(1) + scroll indicators(2)
+	reservedLines := 9
+	availableHeight := termHeight - reservedLines
 
+	if availableHeight <= 0 {
+		return 0
+	}
 	if totalLines <= availableHeight {
 		return 0
 	}
@@ -202,6 +212,18 @@ func RenderStatus(cfg *config.PactConfig, scrollOffset int, termHeight int) stri
 			}
 		} else {
 			// Pagination active
+			// Validate scrollOffset bounds
+			if scrollOffset < 0 {
+				scrollOffset = 0
+			}
+			maxScroll := len(statuses) - maxVisible
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+			if scrollOffset > maxScroll {
+				scrollOffset = maxScroll
+			}
+
 			endIndex := scrollOffset + maxVisible
 			if endIndex > len(statuses) {
 				endIndex = len(statuses)
