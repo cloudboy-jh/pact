@@ -56,6 +56,7 @@ func init() {
 	rootCmd.AddCommand(pushCmd)
 	rootCmd.AddCommand(editCmd)
 	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(secretCmd)
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(nukeCmd)
