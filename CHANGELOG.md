@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-01-31
+
+### Added
+- **`pact update` command** - Built-in CLI updater with auto-detection
+  - Detects installation method (Homebrew, Scoop, or direct download)
+  - Homebrew: Runs `brew upgrade pact`
+  - Scoop: Runs `scoop update pact`
+  - Direct: Downloads latest release from GitHub and replaces binary
+  - Supports `--version` flag to check current version
+- **PowerShell install script** for Windows (`install.ps1`)
+  - One-liner install: `iwr -useb https://pact-dev.com/install.ps1 | iex`
+  - Auto-detects Scoop and uses it if available
+  - Falls back to direct install in `~/bin/` with PATH setup instructions
+- **Web dashboard update section** - Added "Update CLI" card with copy-paste commands
+  - Shows `pact update` command
+  - Shows platform-specific install scripts
+  - Notes Scoop update alternative for Windows
+
+### Fixed
+- **Disabled mouse reporting in status view** - Prevents crazy scrolling when hovering over terminal
+- **Fixed 'e' edit command in status dashboard** - Properly handles edit menu selection and input draining
+
 ## [0.3.0] - 2025-12-22
 
 ### Added

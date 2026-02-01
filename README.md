@@ -74,6 +74,11 @@ brew install cloudboy-jh/tap/pact
 brew install cloudboy-jh/tap/pact
 ```
 
+**Windows (PowerShell - Recommended)**
+```powershell
+iwr -useb https://pact-dev.com/install.ps1 | iex
+```
+
 **Windows (Scoop)**
 ```powershell
 scoop bucket add pact https://github.com/cloudboy-jh/pact-bucket
@@ -81,6 +86,11 @@ scoop install pact
 ```
 
 **Linux/macOS (curl)**
+```bash
+curl -fsSL https://pact-dev.com/install.sh | sh
+```
+
+**Linux/macOS (GitHub raw)**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cloudboy-jh/pact/master/install.sh | sh
 ```
@@ -115,12 +125,30 @@ pact status
 
 Pact works like `git` — it creates a `.pact/` folder in your project and walks up the directory tree to find it. Your GitHub token is stored globally in your OS keychain.
 
+### Updating Pact
+
+Pact includes a built-in update command that auto-detects your installation method:
+
+```bash
+# Update to the latest version
+pact update
+
+# Check current version
+pact update --version
+```
+
+The update command automatically detects:
+- **Homebrew** (macOS/Linux): Runs `brew upgrade pact`
+- **Scoop** (Windows): Runs `scoop update pact`  
+- **Direct install**: Downloads and replaces the binary from GitHub releases
+
 ### Commands
 
 | Command | Description |
 |---------|-------------|
 | `pact` | Interactive status with quick actions (s/e/q) |
 | `pact init` | Authenticate with GitHub + setup your pact repo |
+| `pact update` | Update CLI to latest version (auto-detects method) |
 | `pact sync` | Interactive module picker - select which modules to apply |
 | `pact sync all` | Apply everything |
 | `pact sync <module>` | Apply specific module (shell, cli, git, editor, terminal, llm, apps) |

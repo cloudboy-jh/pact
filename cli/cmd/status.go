@@ -59,6 +59,9 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
+	// Disable mouse reporting completely
+	fmt.Print("\033[?1000l\033[?1002l\033[?1006l\033[?1015l")
+
 	scrollOffset := 0
 
 	// Render status (convert \n to \r\n for raw mode)
@@ -117,11 +120,18 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 				runSync()
 				return
 			case 'e', 'E':
+				// Drain any pending input first
+				drainInput()
 				// Show edit menu inline (below status)
 				showEditMenuInline()
 				// Read choice while still in raw mode
 				choiceBuf := make([]byte, 1)
-				os.Stdin.Read(choiceBuf)
+				_, err := os.Stdin.Read(choiceBuf)
+				if err != nil {
+					// Error reading - just re-render
+					renderStatus(cfg, scrollOffset, height)
+					continue
+				}
 
 				switch choiceBuf[0] {
 				case 'l', 'L':
@@ -134,8 +144,11 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 					fmt.Print("\r\n")
 					editCmd.Run(editCmd, []string{"web"})
 					return
-				default:
+				case 'q', 'Q', 3: // q, Q, or Ctrl+C
 					// Cancel - re-render status
+					renderStatus(cfg, scrollOffset, height)
+				default:
+					// Any other key - cancel and re-render status
 					renderStatus(cfg, scrollOffset, height)
 				}
 			case 'r', 'R':
@@ -180,6 +193,18 @@ func renderStatus(cfg *config.PactConfig, scrollOffset int, termHeight int) {
 
 func runSync() {
 	syncCmd.Run(syncCmd, []string{})
+}
+
+// drainInput clears any pending input from stdin
+func drainInput() {
+	// Set stdin to non-blocking temporarily to drain any buffered input
+	buf := make([]byte, 256)
+	for {
+		n, _ := os.Stdin.Read(buf)
+		if n == 0 {
+			break
+		}
+	}
 }
 
 func showEditMenuInline() {

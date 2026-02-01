@@ -325,7 +325,35 @@ Complete removal of pact (symlinks + `~/.pact/` + token).
 
 ---
 
-### 10. Read Command (`pact read`)
+### 10. Update Command (`pact update`)
+
+**File:** `/cli/cmd/update.go`
+
+Update the pact CLI to the latest available version with automatic installation method detection.
+
+**Flags:**
+| Flag | Type | Description |
+|------|------|-------------|
+| `--version` | bool | Print version information |
+
+**Update Methods:**
+- **Homebrew** (macOS/Linux): Runs `brew update && brew upgrade pact`
+- **Scoop** (Windows): Runs `scoop update && scoop update pact`
+- **Direct download** (fallback): Downloads latest release from GitHub releases and replaces binary
+
+**Flow:**
+1. Detect installation method by checking:
+   - Homebrew: Check if `pact` is in `brew list`
+   - Scoop: Check if binary is in `~/scoop/apps/pact/current/`
+   - Direct: Fallback if neither above detected
+2. Execute platform-appropriate update command
+3. For direct updates: Download from GitHub releases, extract, replace binary
+
+**Windows Note:** Direct updates save old binary as `pact.exe.old` since Windows can't overwrite running executables.
+
+---
+
+### 11. Read Command (`pact read`)
 
 **File:** `/cli/cmd/read.go`
 

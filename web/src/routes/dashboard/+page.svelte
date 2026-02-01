@@ -39,6 +39,7 @@
 	let aiExpanded = false;
 	let ricingExpanded = false;
 	let miscExpanded = false;
+	let showUpdateCommand = false;
 
 	// Top-level modules - support both old (cli-tools) and new (cli) formats
 	const topLevelModules = [
@@ -555,15 +556,54 @@
 						</div>
 					</div>
 
-					<!-- Quick Actions -->
-					<div class="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl">
-						<p class="text-xs text-zinc-500 font-mono mb-3">Quick commands</p>
-						<div class="space-y-2 text-sm font-mono">
-							<div class="text-zinc-400">$ pact sync</div>
-							<div class="text-zinc-400">$ pact push</div>
-							<div class="text-zinc-400">$ pact status</div>
-						</div>
+				<!-- Quick Actions -->
+				<div class="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl">
+					<p class="text-xs text-zinc-500 font-mono mb-3">Quick commands</p>
+					<div class="space-y-2 text-sm font-mono">
+						<div class="text-zinc-400">$ pact sync</div>
+						<div class="text-zinc-400">$ pact push</div>
+						<div class="text-zinc-400">$ pact status</div>
 					</div>
+				</div>
+
+				<!-- Update CLI -->
+				<div class="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl">
+					<p class="text-xs text-zinc-500 font-mono mb-3">Update CLI</p>
+					<button
+						on:click={() => showUpdateCommand = !showUpdateCommand}
+						class="w-full py-2 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-mono rounded-lg transition-colors flex items-center justify-between group"
+					>
+						<span>$ pact update</span>
+						{#if showUpdateCommand}
+							<ChevronDown size={14} class="text-zinc-500" />
+						{:else}
+							<ChevronRight size={14} class="text-zinc-500 group-hover:text-zinc-400" />
+						{/if}
+					</button>
+					
+					{#if showUpdateCommand}
+						<div class="mt-3 space-y-3">
+							<p class="text-xs text-zinc-500">Or install via script:</p>
+							<div class="space-y-2">
+								<div class="bg-zinc-950 rounded-lg p-2 border border-zinc-800">
+									<div class="flex items-center gap-2 mb-1">
+										<span class="text-xs text-zinc-600">macOS/Linux</span>
+									</div>
+									<code class="text-xs text-zinc-400 block break-all">curl -fsSL https://pact-dev.com/install.sh | sh</code>
+								</div>
+								<div class="bg-zinc-950 rounded-lg p-2 border border-zinc-800">
+									<div class="flex items-center gap-2 mb-1">
+										<span class="text-xs text-zinc-600">Windows (PowerShell)</span>
+									</div>
+									<code class="text-xs text-zinc-400 block break-all">iwr -useb https://pact-dev.com/install.ps1 | iex</code>
+								</div>
+							</div>
+							<p class="text-xs text-zinc-600 mt-2">
+								Windows users can also use <code class="text-zinc-500">scoop update pact</code>
+							</p>
+						</div>
+					{/if}
+				</div>
 
 					<!-- User Info -->
 					{#if $auth.user}
