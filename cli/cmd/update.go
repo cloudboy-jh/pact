@@ -311,6 +311,5 @@ func replaceBinary(src, dst string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(updateCmd)
 	updateCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "Print version information")
 }
