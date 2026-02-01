@@ -50,8 +50,8 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 		height = 24
 	}
 
-	// Disable mouse reporting BEFORE entering raw mode
-	fmt.Print("\033[?1000l\033[?1002l\033[?1006l\033[?1015l")
+	// Disable mouse input before entering raw mode
+	setupTerminal()
 
 	// Set terminal to raw mode for single key input
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
