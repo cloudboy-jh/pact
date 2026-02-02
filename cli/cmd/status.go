@@ -32,8 +32,8 @@ var statusCmd = &cobra.Command{
 }
 
 func runInteractiveStatus(cfg *config.PactConfig) {
-	// Check if we're in a terminal
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
+	// Check if we're in a terminal (some terminal emulators report stdin as non-tty)
+	if !term.IsTerminal(int(os.Stdin.Fd())) && !term.IsTerminal(int(os.Stdout.Fd())) {
 		// Non-interactive mode
 		fmt.Println(ui.RenderStatus(cfg, 0, 0))
 		return
@@ -50,9 +50,6 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 		height = 24
 	}
 
-	// Disable mouse input before entering raw mode
-	setupTerminal()
-
 	// Set terminal to raw mode for single key input
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -67,8 +64,8 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 	// Render status (convert \n to \r\n for raw mode)
 	renderStatus(cfg, scrollOffset, height)
 
-	// Read single keys - use larger buffer for mouse/escape sequences
-	buf := make([]byte, 32)
+	// Read single keys - one byte at a time
+	buf := make([]byte, 1)
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
@@ -77,37 +74,6 @@ func runInteractiveStatus(cfg *config.PactConfig) {
 
 		if n > 0 {
 			key := buf[0]
-
-			// Skip escape sequences that aren't arrow keys (e.g., mouse events)
-			// Mouse events typically look like: ESC [ M ... or ESC [ < ...
-			if key == 27 && n >= 3 {
-				// Check if it's an arrow key (ESC [ A/B/C/D)
-				if buf[1] == 91 {
-					switch buf[2] {
-					case 65: // Up arrow
-						if scrollOffset > 0 {
-							scrollOffset--
-							renderStatus(cfg, scrollOffset, height)
-						}
-						continue
-					case 66: // Down arrow
-						maxScroll := ui.GetMaxScroll(cfg, height)
-						if scrollOffset < maxScroll {
-							scrollOffset++
-							renderStatus(cfg, scrollOffset, height)
-						}
-						continue
-					case 67, 68: // Right/Left arrow - ignore
-						continue
-					default:
-						// Any other escape sequence (mouse, etc.) - ignore
-						continue
-					}
-				}
-				// Other escape sequences - ignore
-				continue
-			}
-
 			switch key {
 			case 'q', 'Q', 3: // q, Q, or Ctrl+C
 				// Clear and exit
