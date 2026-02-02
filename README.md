@@ -120,7 +120,7 @@ pact sync cli      # Install bun, node, lazygit, etc.
 pact sync git      # Configure git user, email, default branch
 
 # 4. Check status
-pact status
+pact status  # Use s/e/r/q and j/k to scroll
 ```
 
 Pact works like `git` — it creates a `.pact/` folder in your project and walks up the directory tree to find it. Your GitHub token is stored globally in your OS keychain.
@@ -146,7 +146,7 @@ The update command automatically detects:
 
 | Command | Description |
 |---------|-------------|
-| `pact` | Interactive status with quick actions (s/e/q) |
+| `pact` | Interactive status with quick actions (s/e/r/q, j/k scroll) |
 | `pact init` | Authenticate with GitHub + setup your pact repo |
 | `pact update` | Update CLI to latest version (auto-detects method) |
 | `pact sync` | Interactive module picker - select which modules to apply |
@@ -158,7 +158,7 @@ The update command automatically detects:
 | `pact edit` | Edit pact.json in $EDITOR |
 | `pact edit web` | Open web editor in browser |
 | `pact push` | Commit and push local changes |
-| `pact status` | Show status (non-interactive) |
+| `pact status` | Show status (interactive; s/e/r/q, j/k scroll) |
 | `pact secret set <name>` | Store a secret in OS keychain |
 | `pact secret list` | List secrets and their status |
 | `pact reset` | Remove all symlinks (keeps .pact/) |
