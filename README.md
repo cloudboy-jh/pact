@@ -468,6 +468,7 @@ Releases are automatic on every push to `master` that changes CLI code.
 Contributions are welcome — please open an issue first to discuss what you'd like to change.
 
 See our [Architecture Docs](docs/ARCHITECTURE.md) for technical details.
+Pull requests welcome!
 
 ---
 
